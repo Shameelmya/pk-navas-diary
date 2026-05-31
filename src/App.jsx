@@ -165,11 +165,13 @@ export default function App() {
   const [entryMinute, setEntryMinute] = useState("00");
   const [entryAmPm, setEntryAmPm] = useState("AM");
   const [reminderFrequency, setReminderFrequency] = useState("none");
+  const [entryPrivate, setEntryPrivate] = useState(false);
 
   const [activeEntryMenu, setActiveEntryMenu] = useState(null);
   const [deleteSeriesModal, setDeleteSeriesModal] = useState(null); 
   const [showRemindersModal, setShowRemindersModal] = useState(false);
   const [closeDayModal, setCloseDayModal] = useState(false);
+  const [uncloseDayModal, setUncloseDayModal] = useState(null);
   const [closeDayReason, setCloseDayReason] = useState("");
   const [closedDayAlert, setClosedDayAlert] = useState(null);
 
@@ -190,7 +192,7 @@ export default function App() {
 
   useEffect(() => {
     const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Berkshire+Swash&family=Caveat:wght@400;500;600;700&family=Sora:wght@400;600;700&family=Chilanka&display=swap';
+    link.href = 'https://fonts.googleapis.com/css2?family=Amiri:wght@400&family=Berkshire+Swash&family=Comic+Neue:wght@400;700&family=Sora:wght@400;600;700&family=Chilanka&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
 
@@ -205,8 +207,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    const entriesRef = collection(db, 'artifacts', PROJECT_ID, 'users', user.uid, 'entries');
+    // We now use a GLOBAL SHARED PATH so all devices share the exact same data, regardless of anonymous UID.
+    // Ensure you have set your Firebase Firestore Rules to allow read/write to this path!
+    const entriesRef = collection(db, 'artifacts', PROJECT_ID, 'public', 'data', 'entries');
     const unsubscribe = onSnapshot(entriesRef, (snapshot) => {
       const loadedData = [];
       let loadedConfig = { psPassword: 'ad@diary', lastBackup: null };
@@ -229,11 +232,9 @@ export default function App() {
     return () => unsubscribe();
   }, [user]);
 
-  // Handle Cover Quotes Timing
   useEffect(() => {
-    if (loginRole) return; // Only run on cover page
+    if (loginRole) return; 
     const currentQuote = ISLAMIC_QUOTES[quoteIndex];
-    // Calculate reading time based on length (min 4s, max 8s)
     const duration = Math.min(Math.max(4000, (currentQuote.arabic.length + currentQuote.malayalam.length) * 50), 8000);
     
     const timer = setTimeout(() => {
@@ -244,17 +245,15 @@ export default function App() {
   }, [quoteIndex, loginRole]);
 
   const saveToFirebase = async (id, dataToSave) => {
-    if (!user) return;
     try {
-      const docRef = doc(db, 'artifacts', PROJECT_ID, 'users', user.uid, 'entries', id);
+      const docRef = doc(db, 'artifacts', PROJECT_ID, 'public', 'data', 'entries', id);
       await setDoc(docRef, dataToSave);
     } catch (e) { console.error("Error saving:", e); }
   };
 
   const deleteFromFirebase = async (id) => {
-    if (!user) return;
     try {
-      const docRef = doc(db, 'artifacts', PROJECT_ID, 'users', user.uid, 'entries', id);
+      const docRef = doc(db, 'artifacts', PROJECT_ID, 'public', 'data', 'entries', id);
       await deleteDoc(docRef);
     } catch (e) { console.error("Error deleting:", e); }
   };
@@ -275,18 +274,20 @@ export default function App() {
   };
 
   const confirmLogout = () => {
-    setLoginRole(null); 
-    localStorage.removeItem('diary_role');
-    
-    // Force close any open panels, menus, or modals to prevent leaks to the PS
+    // FORCE CLOSE all panels, modals, and popups immediately
     setActivePanel(null);
     setActiveEntryMenu(null);
     setIsModalOpen(false);
     setShowRemindersModal(false);
     setCloseDayModal(false);
+    setUncloseDayModal(null);
     setDeleteSeriesModal(null);
     setClosedDayAlert(null);
     setShowLogoutConfirm(false); 
+    
+    // Clear Session
+    setLoginRole(null); 
+    localStorage.removeItem('diary_role');
     
     playFlipSound();
   };
@@ -383,6 +384,7 @@ export default function App() {
       setEntryPhone(entryToEdit.phone || "");
       setReminderFrequency(entryToEdit.frequency || "none");
       setEditingEntryId(entryToEdit.id);
+      setEntryPrivate(entryToEdit.isPrivate || false);
     } else {
       setEntryDate(toLocalISODate(currentDate));
       const now = new Date();
@@ -393,6 +395,7 @@ export default function App() {
       setEntryHour(String(h).padStart(2, '0')); setEntryMinute(String(m).padStart(2, '0')); setEntryAmPm(ampm);
       setNewEntryText(""); setEntryType("diary"); setEntryPhone(""); setReminderFrequency("none");
       setEditingEntryId(null);
+      setEntryPrivate(false);
     }
     setIsModalOpen(true); setActiveEntryMenu(null); setActivePanel(null);
     setTimeout(() => entryTextRef.current?.focus(), 300);
@@ -425,6 +428,7 @@ export default function App() {
         phone: entryPhone.trim(),
         completed: editingEntryId ? allData.find(e => e.id === editingEntryId)?.completed : false,
         copiedToPhysical: editingEntryId ? allData.find(e => e.id === editingEntryId)?.copiedToPhysical : false,
+        isPrivate: entryPrivate
       };
     } else if (entryType === 'reminder') {
       newEntry = {
@@ -442,7 +446,7 @@ export default function App() {
       };
     }
     
-    setIsModalOpen(false); setEditingEntryId(null);
+    setIsModalOpen(false); setEditingEntryId(null); setEntryPrivate(false);
     if (entryType !== 'note') handleJumpDate(toLocalISODate(entryDateTime));
     await saveToFirebase(newEntryId, newEntry);
   };
@@ -498,19 +502,19 @@ export default function App() {
       <div className="absolute inset-4 sm:inset-5 border-[2px] border-dashed border-[#8b5a2b] opacity-60 rounded-2xl sm:rounded-[20px] pointer-events-none z-10" />
       <div className="absolute inset-5 sm:inset-6 border border-solid border-[#1a0b04] opacity-80 rounded-xl sm:rounded-[18px] pointer-events-none z-10" />
       
-      {/* Islamic Quotes Section */}
+      {/* Islamic Quotes Section - Plain & Elegant */}
       <div className="absolute top-12 left-4 right-4 z-20 flex flex-col items-center text-center">
         <AnimatePresence mode="wait">
           <motion.div 
             key={quoteIndex}
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }}
             className="max-w-md w-full px-2"
           >
-             <p className="text-[#fceabb] text-lg mb-2 leading-relaxed font-normal tracking-wide drop-shadow-md" style={{ fontFamily: "'Amiri', serif" }}>
+             <p className="text-[#fceabb] text-[16px] mb-2 leading-relaxed font-normal tracking-wide opacity-90" style={{ fontFamily: "'Amiri', serif", fontWeight: 400 }}>
                {ISLAMIC_QUOTES[quoteIndex].arabic}
              </p>
-             <div className="w-16 h-px bg-gradient-to-r from-transparent via-[#8b5a2b] to-transparent mx-auto mb-2 opacity-50" />
-             <p className="text-[#d4c1ac] text-sm leading-tight font-medium drop-shadow-md" style={{ fontFamily: "'A10', sans-serif" }}>
+             <div className="w-16 h-px bg-[#8b5a2b] mx-auto mb-2 opacity-50" />
+             <p className="text-[#d4c1ac] text-[13px] leading-tight opacity-90" style={{ fontFamily: "'A10', sans-serif", fontWeight: 400 }}>
                {ISLAMIC_QUOTES[quoteIndex].malayalam}
              </p>
           </motion.div>
@@ -588,18 +592,23 @@ export default function App() {
             <div className="flex items-start justify-between gap-4">
               <p 
                 className={`text-[20px] leading-[32px] whitespace-pre-wrap break-words m-0 flex-1 transition-all duration-300 ${entry.completed ? 'line-through opacity-40 grayscale' : ''}`}
-                style={{ fontFamily: "'Caveat', 'A10', 'Chilanka', cursive", color: COLORS.ink, fontWeight: 500 }}
+                style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", color: COLORS.ink, fontWeight: 600 }}
               >
-                <span className="font-bold tracking-wider inline" style={{ color: entry.type === 'reminder' ? COLORS.redInk : COLORS.ink, fontSize: '21px', fontFamily: "'A10', 'Caveat', 'Chilanka', cursive" }}>
-                  {entry.time}&nbsp;&nbsp;-&nbsp;&nbsp;
+                <span className="tracking-wider inline whitespace-nowrap" style={{ color: COLORS.redInk, fontSize: '20px', fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 'bold' }}>
+                  {entry.time}&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;
                 </span>
                 {entry.content}
                 {entry.type === 'reminder' && entry.frequency !== 'none' && (
                   <span className="text-xs bg-black/5 rounded px-2 py-0.5 ml-2 font-sans tracking-wide text-black/40">⟳ {entry.frequency.toUpperCase()}</span>
                 )}
+                {entry.isPrivate && loginRole === 'main' && (
+                  <span className="inline-flex items-center ml-2 text-red-500 relative z-[60]" title="Private Entry">
+                    <Lock size={14} />
+                  </span>
+                )}
                 {entry.phone && (
-                  <span className="inline whitespace-nowrap" style={{ fontFamily: "'A10', 'Caveat', 'Chilanka', cursive", fontSize: '21px' }}>
-                    &nbsp;&nbsp;-&nbsp;<a href={`tel:${entry.phone}`} className="text-[#2563EB] decoration-1 underline-offset-4 inline relative z-[60]" onClick={(e) => e.stopPropagation()}>{entry.phone}</a>
+                  <span className="inline whitespace-nowrap" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontSize: '20px', fontWeight: 600 }}>
+                    &nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;<a href={`tel:${entry.phone}`} className="text-[#2563EB] decoration-1 underline-offset-4 inline relative z-[60]" onClick={(e) => e.stopPropagation()}>{entry.phone}</a>
                   </span>
                 )}
               </p>
@@ -611,7 +620,7 @@ export default function App() {
                       <BookOpen size={20} />
                     </button>
                   ) : (
-                    <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Caveat', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
+                    <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
                   )}
                 </div>
               )}
@@ -649,8 +658,9 @@ export default function App() {
     
     let sortedDisplayEntries = [];
     if (loginRole === 'sub') {
-      const unmarked = diaryEntries.filter(e => !e.copiedToPhysical).sort((a, b) => b.timestamp - a.timestamp);
-      const marked = diaryEntries.filter(e => e.copiedToPhysical).sort((a, b) => a.timestamp - b.timestamp);
+      const visibleDiaryEntries = diaryEntries.filter(e => !e.isPrivate);
+      const unmarked = visibleDiaryEntries.filter(e => !e.copiedToPhysical).sort((a, b) => b.timestamp - a.timestamp);
+      const marked = visibleDiaryEntries.filter(e => e.copiedToPhysical).sort((a, b) => a.timestamp - b.timestamp);
       sortedDisplayEntries = [...unmarked, ...marked];
     } else {
       sortedDisplayEntries = [...reminders, ...diaryEntries].sort((a, b) => a.timestamp - b.timestamp);
@@ -675,7 +685,7 @@ export default function App() {
         <div className="w-full z-[60] flex items-center justify-between pt-5 pb-3 border-b border-[rgba(178,138,90,0.3)] bg-transparent backdrop-blur-sm shrink-0 px-4 sm:px-8 relative" onPointerDown={(e) => e.stopPropagation()}>
           <div className="w-11 h-11 flex items-center justify-start z-50">
             {loginRole === 'main' ? (
-              <button onClick={(e) => { e.stopPropagation(); setShowRemindersModal(true); }} className="w-10 h-10 flex items-center justify-center text-[#B28A5A] hover:bg-black/5 rounded-full transition-colors active:scale-90 relative">
+              <button onClick={(e) => { e.stopPropagation(); setShowRemindersModal(true); }} className="w-10 h-10 flex items-center justify-center text-[#B28A5A] hover:bg-black/5 rounded-full transition-colors active:scale-90 relative" title="Today's Reminders">
                 <Bell size={22} />
                 {reminders.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />}
               </button>
@@ -693,9 +703,24 @@ export default function App() {
           </label>
 
           <div className="flex items-center gap-1 z-[70] w-20 justify-end">
-            {loginRole === 'main' && !isClosed && (
-              <button onClick={(e) => { e.stopPropagation(); setCloseDayModal(true); }} className="w-10 h-10 flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors active:scale-90" title="Close Day">
-                <Ban size={18} strokeWidth={2.5} />
+            {loginRole === 'main' && (
+              <button 
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  if (isClosed) {
+                    holdTimer.current = setTimeout(() => {
+                      setUncloseDayModal(isClosed.id);
+                      if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(50);
+                    }, 800);
+                  }
+                }}
+                onPointerUp={(e) => { if (holdTimer.current) clearTimeout(holdTimer.current); }}
+                onPointerLeave={(e) => { if (holdTimer.current) clearTimeout(holdTimer.current); }}
+                onClick={(e) => { e.stopPropagation(); if (!isClosed) setCloseDayModal(true); }} 
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors active:scale-90 ${isClosed ? 'text-red-600 bg-red-100 border border-red-200 shadow-sm' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`} 
+                title={isClosed ? "Hold to Reopen Day" : "Close Day"}
+              >
+                <Ban size={18} strokeWidth={isClosed ? 2.5 : 2.5} />
               </button>
             )}
             <button onClick={(e) => { e.stopPropagation(); handleJumpToToday(); }} className="w-10 h-10 flex items-center justify-center text-[#B28A5A] hover:bg-black/5 rounded-full transition-colors active:scale-90" title="Go to Today"><Target size={22} /></button>
@@ -704,9 +729,9 @@ export default function App() {
 
         {isClosed && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-             <div className="transform -rotate-12 border-4 border-red-500/20 rounded-2xl p-6 text-center bg-white/40 backdrop-blur-sm">
+             <div className="transform -rotate-12 border-4 border-red-500/20 rounded-2xl p-6 text-center bg-white/40 backdrop-blur-sm shadow-xl">
                 <h2 className="text-red-500/80 font-black text-4xl uppercase tracking-widest border-b-2 border-red-500/20 pb-2 mb-2" style={{fontFamily: "'Sora', sans-serif"}}>CLOSED</h2>
-                <p className="text-red-600/70 font-bold text-xl uppercase tracking-wider" style={{fontFamily: "'Sora', sans-serif"}}>{isClosed.content}</p>
+                <p className="text-red-700/80 font-bold text-xl uppercase tracking-wider" style={{fontFamily: "'Sora', sans-serif"}}>{isClosed.content}</p>
              </div>
           </div>
         )}
@@ -723,7 +748,7 @@ export default function App() {
     return (
       <div className="absolute bottom-0 left-0 right-0 h-[64px] bg-[#DCD2BE] border-t border-[#B28A5A]/50 z-[60] flex items-center justify-between px-2 sm:px-6 rounded-b-[2rem] sm:rounded-b-3xl shadow-[inset_0_4px_10px_rgba(0,0,0,0.03),_0_-4px_15px_rgba(0,0,0,0.05)]">
         <PaperTexture />
-        <div className="relative z-10 w-full flex justify-between items-center text-[#3A2E25]/80">
+        <div className="relative z-10 w-full flex justify-between items-center text-[#3A2E25]/80" onPointerDown={(e) => e.stopPropagation()}>
           <button onClick={() => setShowLogoutConfirm(true)} className="p-3 text-red-600 hover:text-red-800 transition-colors" title="Log Out"><LogOut size={22} /></button>
           <button onClick={() => setActivePanel(p => p === 'settings' ? null : 'settings')} className={`p-3 transition-colors ${activePanel === 'settings' ? 'text-[#B28A5A]' : 'hover:text-[#3A2E25]'}`} title="Settings"><Settings size={22} /></button>
           <button onClick={() => setActivePanel(p => p === 'reading' ? null : 'reading')} className={`p-3 transition-colors ${activePanel === 'reading' ? 'text-[#B28A5A]' : 'hover:text-[#3A2E25]'}`} title="Reading Targets"><BookOpen size={22} /></button>
@@ -736,7 +761,7 @@ export default function App() {
   };
 
   const DatePickerBadge = () => (
-    <label className="cursor-pointer relative group flex items-center gap-1 border border-[#B28A5A]/30 rounded-lg px-2 py-1 bg-white/50">
+    <label className="cursor-pointer relative group flex items-center gap-1 border border-[#B28A5A]/30 rounded-lg px-2 py-1 bg-white/50" onPointerDown={(e) => e.stopPropagation()}>
         <input type="date" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" value={toLocalISODate(currentDate)} onChange={(e) => handleJumpDate(e.target.value)} />
         <CalendarIcon size={12} className="text-[#B28A5A]"/>
         <span className="text-xs font-bold text-[#B28A5A] group-hover:text-[#3A2E25] transition-colors">{formatDate(currentDate)}</span>
@@ -778,7 +803,7 @@ export default function App() {
     };
 
     return (
-      <div className="absolute inset-x-0 bottom-[64px] h-[60%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30">
+      <div className="absolute inset-x-0 bottom-[64px] h-[60%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30" onPointerDown={(e) => e.stopPropagation()}>
         <PaperTexture />
         <div className="p-4 border-b border-[#B28A5A]/20 flex justify-between items-center relative z-10 bg-[#EAE3D2]/80 backdrop-blur-sm rounded-t-3xl">
           <div className="flex items-center gap-3">
@@ -786,10 +811,10 @@ export default function App() {
             <div className="h-4 w-px bg-[#B28A5A]/30" />
             <DatePickerBadge />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <button onClick={() => setShowAdd(true)} className="p-2 text-[#B28A5A] hover:bg-black/5 rounded-full"><Plus size={22}/></button>
-            <div className="w-px h-6 bg-black/10 mx-2"/>
-            <button onClick={() => setActivePanel(null)} className="p-2 hover:bg-black/5 rounded-full"><X size={20}/></button>
+            <div className="w-px h-6 bg-black/10"/>
+            <button onClick={() => setActivePanel(null)} className="p-2 text-black/50 hover:text-black rounded-full"><X size={20}/></button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 relative z-10 space-y-4">
@@ -798,7 +823,7 @@ export default function App() {
             return (
               <div key={book.id} className="bg-white/60 border border-[#B28A5A]/30 p-4 rounded-xl shadow-sm relative" onPointerDown={(e) => handlePointerDown(e, book.id)} onPointerUp={handlePointerUpOrLeave} onPointerLeave={handlePointerUpOrLeave}>
                 <div className="flex justify-between items-start mb-2">
-                  <h4 className="font-bold text-[#1A1A1A] text-[18px] leading-tight" style={{ fontFamily: "'Caveat', 'A10', 'Chilanka', cursive" }}>{book.title}</h4>
+                  <h4 className="text-[#1A1A1A] text-[18px] leading-tight" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600 }}>{book.title}</h4>
                   {stats.status === 'active' && <span className="text-xs bg-[#B28A5A] text-white px-2 py-1 rounded font-bold ml-2 shrink-0">Target: {stats.dailyTarget} pgs</span>}
                 </div>
                 {stats.status === 'active' ? (
@@ -849,7 +874,7 @@ export default function App() {
     };
 
     return (
-      <div className="absolute inset-x-0 bottom-[64px] h-[60%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30">
+      <div className="absolute inset-x-0 bottom-[64px] h-[60%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30" onPointerDown={(e) => e.stopPropagation()}>
         <PaperTexture />
         <div className="p-4 border-b border-[#B28A5A]/20 flex justify-between items-center relative z-10 bg-[#EAE3D2]/80 backdrop-blur-sm rounded-t-3xl">
           <div className="flex items-center gap-3">
@@ -857,10 +882,10 @@ export default function App() {
             <div className="h-4 w-px bg-[#B28A5A]/30" />
             <DatePickerBadge />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <button onClick={() => setShowAdd(true)} className="p-2 text-[#B28A5A] hover:bg-black/5 rounded-full"><Plus size={22}/></button>
-            <div className="w-px h-6 bg-black/10 mx-2"/>
-            <button onClick={() => setActivePanel(null)} className="p-2 hover:bg-black/5 rounded-full"><X size={20}/></button>
+            <div className="w-px h-6 bg-black/10"/>
+            <button onClick={() => setActivePanel(null)} className="p-2 text-black/50 hover:text-black rounded-full"><X size={20}/></button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 relative z-10">
@@ -871,10 +896,10 @@ export default function App() {
                   {todo.completedAtStr === targetDateStr && <Check size={14} className="text-white"/>}
                 </button>
                 <div className="flex-1">
-                  <p className={`text-[17px] leading-tight ${todo.completedAtStr === targetDateStr ? 'line-through text-black/40' : 'text-[#1A1A1A]'}`} style={{ fontFamily: "'Caveat', 'A10', 'Chilanka', cursive", fontWeight: 500 }}>{todo.content}</p>
+                  <p className={`text-[17px] leading-tight ${todo.completedAtStr === targetDateStr ? 'line-through text-black/40' : 'text-[#1A1A1A]'}`} style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600 }}>{todo.content}</p>
                   <div className="flex items-center gap-3 mt-1.5 opacity-70 text-xs">
                     <span className={`font-bold ${todo.priority === 'High' ? 'text-red-500' : todo.priority === 'Medium' ? 'text-orange-500' : 'text-blue-500'}`}>{todo.priority}</span>
-                    {todo.phone && <a href={`tel:${todo.phone}`} className="flex items-center gap-1 text-blue-600 relative z-[60]" style={{ fontFamily: "'A10', sans-serif" }}><Phone size={12}/> {todo.phone}</a>}
+                    {todo.phone && <a href={`tel:${todo.phone}`} className="flex items-center gap-1 text-blue-600 relative z-[60]" style={{ fontFamily: "'Comic Neue', 'A10', sans-serif" }}><Phone size={12}/> {todo.phone}</a>}
                   </div>
                 </div>
               </div>
@@ -927,7 +952,7 @@ export default function App() {
     };
 
     return (
-      <div className="absolute inset-x-0 bottom-[64px] h-[60%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30">
+      <div className="absolute inset-x-0 bottom-[64px] h-[60%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30" onPointerDown={(e) => e.stopPropagation()}>
         <PaperTexture />
         <div className="p-4 border-b border-[#B28A5A]/20 flex justify-between items-center relative z-10 bg-[#EAE3D2]/80 backdrop-blur-sm rounded-t-3xl">
           <div className="flex items-center gap-3">
@@ -935,10 +960,10 @@ export default function App() {
             <div className="h-4 w-px bg-[#B28A5A]/30" />
             <DatePickerBadge />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             <button onClick={() => setShowAdd(true)} className="p-2 text-[#B28A5A] hover:bg-black/5 rounded-full"><Plus size={22}/></button>
-            <div className="w-px h-6 bg-black/10 mx-2"/>
-            <button onClick={() => setActivePanel(null)} className="p-2 hover:bg-black/5 rounded-full"><X size={20}/></button>
+            <div className="w-px h-6 bg-black/10"/>
+            <button onClick={() => setActivePanel(null)} className="p-2 text-black/50 hover:text-black rounded-full"><X size={20}/></button>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 relative z-10">
@@ -949,8 +974,8 @@ export default function App() {
                   {ev.completedAtStr === targetDateStr && <Check size={14} className="text-white"/>}
                 </button>
                 <div className="flex-1">
-                  <p className={`text-[17px] leading-tight ${ev.completedAtStr === targetDateStr ? 'line-through text-black/40' : 'text-[#3A2E25]'}`} style={{ fontFamily: "'Caveat', 'A10', 'Chilanka', cursive", fontWeight: 500 }}>{ev.content}</p>
-                  {ev.phone && <a href={`tel:${ev.phone}`} className="inline-flex items-center gap-1 text-blue-600 relative z-[60] text-sm mt-2" style={{ fontFamily: "'A10', sans-serif" }}><Phone size={14}/> {ev.phone}</a>}
+                  <p className={`text-[17px] leading-tight ${ev.completedAtStr === targetDateStr ? 'line-through text-black/40' : 'text-[#3A2E25]'}`} style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600 }}>{ev.content}</p>
+                  {ev.phone && <a href={`tel:${ev.phone}`} className="inline-flex items-center gap-1 text-blue-600 relative z-[60] text-sm mt-2" style={{ fontFamily: "'Comic Neue', 'A10', sans-serif" }}><Phone size={14}/> {ev.phone}</a>}
                 </div>
               </div>
               <AnimatePresence>
@@ -992,11 +1017,12 @@ export default function App() {
       setEntryHour("12"); setEntryMinute("00"); setEntryAmPm("AM");
       setNewEntryText(""); setEntryType("note"); setEntryPhone("");
       setEditingEntryId(null);
+      setEntryPrivate(false);
       setIsModalOpen(true);
     };
 
     return (
-      <div className="absolute inset-x-0 bottom-[64px] h-[75%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30">
+      <div className="absolute inset-x-0 bottom-[64px] h-[75%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30" onPointerDown={(e) => e.stopPropagation()}>
         <PaperTexture />
         <div className="p-4 border-b border-[#B28A5A]/20 relative z-10 bg-[#EAE3D2]/80 backdrop-blur-sm rounded-t-3xl flex flex-col gap-3">
           <div className="flex justify-between items-center">
@@ -1005,10 +1031,10 @@ export default function App() {
               <div className="h-4 w-px bg-[#B28A5A]/30" />
               <DatePickerBadge />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               <button onClick={handleAddClick} className="p-2 text-[#B28A5A] hover:bg-black/5 rounded-full"><Plus size={22}/></button>
-              <div className="w-px h-6 bg-black/10 mx-2"/>
-              <button onClick={() => setActivePanel(null)} className="p-2 hover:bg-black/5 rounded-full"><X size={20}/></button>
+              <div className="w-px h-6 bg-black/10"/>
+              <button onClick={() => setActivePanel(null)} className="p-2 text-black/50 hover:text-black rounded-full"><X size={20}/></button>
             </div>
           </div>
           <div className="relative">
@@ -1019,8 +1045,8 @@ export default function App() {
         <div className="flex-1 overflow-y-auto p-4 relative z-10 space-y-4">
           {filteredNotes.map(note => (
             <div key={note.id} className="bg-yellow-100/50 p-4 rounded-xl shadow-sm border border-yellow-600/20 relative" onPointerDown={(e) => handlePointerDown(e, note.id)} onPointerUp={handlePointerUpOrLeave} onPointerLeave={handlePointerUpOrLeave}>
-              <p className="whitespace-pre-wrap text-[#1A1A1A] leading-relaxed text-[17px]" style={{ fontFamily: "'Caveat', 'A10', 'Chilanka', cursive", fontWeight: 500 }}>{note.content}</p>
-              {note.phone && <p className="mt-2"><a href={`tel:${note.phone}`} className="text-blue-600 font-medium relative z-[60]" style={{ fontFamily: "'A10', sans-serif" }}><Phone size={14} className="inline"/> {note.phone}</a></p>}
+              <p className="whitespace-pre-wrap text-[#1A1A1A] leading-relaxed text-[17px]" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600 }}>{note.content}</p>
+              {note.phone && <p className="mt-2"><a href={`tel:${note.phone}`} className="text-blue-600 font-medium relative z-[60]" style={{ fontFamily: "'Comic Neue', 'A10', sans-serif" }}><Phone size={14} className="inline"/> {note.phone}</a></p>}
               <AnimatePresence>
                 {activeEntryMenu === note.id && (
                   <motion.div initial={{opacity:0, scale:0.9}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.9}} className="absolute top-2 right-2 flex gap-1 z-[60]" onPointerDown={(e) => e.stopPropagation()}>
@@ -1079,11 +1105,11 @@ export default function App() {
     };
 
     return (
-      <div className="absolute inset-x-0 bottom-[64px] h-[75%] bg-[#F7F3EA] text-[#3A2E25] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30">
+      <div className="absolute inset-x-0 bottom-[64px] h-[75%] bg-[#F7F3EA] text-[#3A2E25] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30" onPointerDown={(e) => e.stopPropagation()}>
         <PaperTexture />
         <div className="p-4 border-b border-[#B28A5A]/20 flex justify-between items-center shrink-0 relative z-10 bg-[#EAE3D2]/80 backdrop-blur-sm rounded-t-3xl">
           <h3 className="font-bold text-[#3A2E25] flex items-center gap-2"><Settings size={18}/> MLA Settings</h3>
-          <button onClick={() => setActivePanel(null)} className="p-2 hover:bg-black/5 rounded-full"><X size={20}/></button>
+          <button onClick={() => setActivePanel(null)} className="p-2 text-black/50 hover:text-black rounded-full"><X size={20}/></button>
         </div>
         <div className="flex-1 overflow-y-auto p-5 space-y-6 relative z-10">
           <div className="space-y-2 bg-white/40 p-4 rounded-xl border border-black/5">
@@ -1129,7 +1155,7 @@ export default function App() {
   const renderEntryModal = () => {
     if (!isModalOpen) return null;
     return (
-      <motion.div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <motion.div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onPointerDown={(e) => e.stopPropagation()}>
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
         <motion.div className="relative w-full max-w-lg rounded-t-[2rem] sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col" style={{ backgroundColor: COLORS.paper }} initial={{ y: "100%", opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: "100%", opacity: 0 }} transition={{ type: 'spring', damping: 28, stiffness: 300 }} onClick={(e) => e.stopPropagation()}>
           <PaperTexture />
@@ -1164,7 +1190,7 @@ export default function App() {
           </div>
           
           <div className="p-4 sm:p-6 relative z-10 flex-1">
-            <textarea ref={entryTextRef} className="w-full h-44 sm:h-56 bg-transparent outline-none resize-none text-[20px] leading-[32px] m-0 pt-[4px]" style={{ fontFamily: entryType === 'note' ? "'Caveat', 'A10', 'Chilanka', cursive" : "'Caveat', 'A10', 'Chilanka', cursive", fontWeight: 500, color: COLORS.ink, backgroundImage: entryType==='note'?'none':`repeating-linear-gradient(transparent, transparent 31px, rgba(178, 138, 90, 0.2) 31px, rgba(178, 138, 90, 0.2) 32px)`, backgroundPosition: '0 0', backgroundAttachment: 'local' }} value={newEntryText} onChange={(e) => setNewEntryText(e.target.value)} placeholder={entryType === 'reminder' ? "What do you need to remember?" : entryType === 'note' ? "Write a permanent note..." : "Dear Diary..."} />
+            <textarea ref={entryTextRef} className="w-full h-44 sm:h-56 bg-transparent outline-none resize-none text-[20px] leading-[32px] m-0 pt-[4px]" style={{ fontFamily: entryType === 'note' ? "'Comic Neue', 'A10', 'Chilanka', cursive" : "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600, color: COLORS.ink, backgroundImage: entryType==='note'?'none':`repeating-linear-gradient(transparent, transparent 31px, rgba(178, 138, 90, 0.2) 31px, rgba(178, 138, 90, 0.2) 32px)`, backgroundPosition: '0 0', backgroundAttachment: 'local' }} value={newEntryText} onChange={(e) => setNewEntryText(e.target.value)} placeholder={entryType === 'reminder' ? "What do you need to remember?" : entryType === 'note' ? "Write a permanent note..." : "Dear Diary..."} />
             <div className="mt-4 flex items-center gap-3 border-b border-black/10 pb-2">
               <Phone size={18} className="text-black/30" />
               <input type="tel" placeholder="Phone Number (Optional)" value={entryPhone} onChange={(e) => setEntryPhone(e.target.value)} className="bg-transparent outline-none text-[15px] w-full placeholder:text-black/30 text-[#1A1A1A]" />
@@ -1184,7 +1210,15 @@ export default function App() {
             )}
           </div>
           
-          <div className="p-4 sm:p-5 bg-[#EAE3D2]/80 backdrop-blur-md relative z-10 flex justify-end border-t border-[#B28A5A]/20">
+          <div className="p-4 sm:p-5 bg-[#EAE3D2]/80 backdrop-blur-md relative z-10 flex justify-between items-center border-t border-[#B28A5A]/20">
+            <div>
+              {loginRole === 'main' && entryType === 'diary' && (
+                <button onClick={() => setEntryPrivate(!entryPrivate)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-bold transition-colors shadow-sm ${entryPrivate ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-white/50 text-black/60 hover:bg-white border border-black/5'}`}>
+                  {entryPrivate ? <Lock size={16} /> : <User size={16} />}
+                  {entryPrivate ? 'Private' : 'Visible to PS'}
+                </button>
+              )}
+            </div>
             <button onClick={handleSaveEntry} disabled={!newEntryText.trim() || (entryType!=='note' && !entryDate)} className="px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all disabled:opacity-50 text-white shadow-lg shadow-[#B28A5A]/20 hover:scale-[1.02] active:scale-95 text-[13px] sm:text-[14px]" style={{ backgroundColor: COLORS.accent }}>
               <Check size={18} /> {editingEntryId ? "UPDATE" : "SAVE"}
             </button>
@@ -1253,9 +1287,24 @@ export default function App() {
 
       {renderEntryModal()}
 
-      {}
       <AnimatePresence>
-        {closedDayAlert && (
+        {uncloseDayModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setUncloseDayModal(null)}>
+            <div className="bg-[#FFF0F0] p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center border border-red-200" onClick={e => e.stopPropagation()}>
+              <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center text-red-500 mx-auto mb-4"><Ban size={32} /></div>
+              <h3 className="text-red-900 font-bold text-lg mb-2">Reopen This Day?</h3>
+              <p className="text-red-700/70 text-sm mb-6">This will remove the closed status and allow new entries to be added to this date again.</p>
+              <div className="flex flex-col gap-2">
+                <button onClick={async () => { await deleteFromFirebase(uncloseDayModal); setUncloseDayModal(null); setClosedDayAlert(null); }} className="w-full py-3 rounded-xl bg-red-500 text-white font-bold transition-colors active:scale-95">Confirm Reopen</button>
+                <button onClick={() => setUncloseDayModal(null)} className="w-full py-2 rounded-xl text-red-900/60 font-medium transition-colors hover:text-red-900">Cancel</button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {closedDayAlert && !uncloseDayModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setClosedDayAlert(null)}>
             <div className="bg-[#FFF0F0] p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center border border-red-200" onClick={e => e.stopPropagation()}>
               <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center text-red-500 mx-auto mb-4"><Ban size={32} /></div>
@@ -1363,7 +1412,7 @@ export default function App() {
       </AnimatePresence>
 
       <style dangerouslySetInnerHTML={{__html: `
-        @font-face { font-family: 'A10'; src: url('/fonts/A10-Regular.ttf') format('truetype'), url('/fonts/A10.ttf') format('truetype'), url('/A10.ttf') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }
+        @font-face { font-family: 'A10'; src: url('/fonts/A10-Regular.ttf') format('truetype'), url('/fonts/A10.ttf') format('truetype'), url('/A10.ttf') format('truetype'), url('A10-Regular.ttf') format('truetype'); font-weight: normal; font-style: normal; font-display: swap; }
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
