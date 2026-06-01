@@ -192,7 +192,7 @@ export default function App() {
 
   useEffect(() => {
     const link = document.createElement('link');
-    link.href = 'https://fonts.googleapis.com/css2?family=Amiri:wght@400&family=Berkshire+Swash&family=Comic+Neue:wght@400;700&family=Sora:wght@400;600;700&family=Chilanka&display=swap';
+    link.href = 'https://fonts.googleapis.com/css2?family=Amiri:wght@400&family=Berkshire+Swash&family=Comic+Neue:wght@400;600;700&family=Sora:wght@400;600;700&family=Chilanka&display=swap';
     link.rel = 'stylesheet';
     document.head.appendChild(link);
 
@@ -207,8 +207,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    // We now use a GLOBAL SHARED PATH so all devices share the exact same data, regardless of anonymous UID.
-    // Ensure you have set your Firebase Firestore Rules to allow read/write to this path!
     const entriesRef = collection(db, 'artifacts', PROJECT_ID, 'public', 'data', 'entries');
     const unsubscribe = onSnapshot(entriesRef, (snapshot) => {
       const loadedData = [];
@@ -274,7 +272,6 @@ export default function App() {
   };
 
   const confirmLogout = () => {
-    // FORCE CLOSE all panels, modals, and popups immediately
     setActivePanel(null);
     setActiveEntryMenu(null);
     setIsModalOpen(false);
@@ -285,7 +282,6 @@ export default function App() {
     setClosedDayAlert(null);
     setShowLogoutConfirm(false); 
     
-    // Clear Session
     setLoginRole(null); 
     localStorage.removeItem('diary_role');
     
@@ -502,7 +498,6 @@ export default function App() {
       <div className="absolute inset-4 sm:inset-5 border-[2px] border-dashed border-[#8b5a2b] opacity-60 rounded-2xl sm:rounded-[20px] pointer-events-none z-10" />
       <div className="absolute inset-5 sm:inset-6 border border-solid border-[#1a0b04] opacity-80 rounded-xl sm:rounded-[18px] pointer-events-none z-10" />
       
-      {/* Islamic Quotes Section - Plain & Elegant */}
       <div className="absolute top-12 left-4 right-4 z-20 flex flex-col items-center text-center">
         <AnimatePresence mode="wait">
           <motion.div 
@@ -578,11 +573,18 @@ export default function App() {
     </motion.div>
   );
 
-  const EntryList = ({ entriesList, currentDateStr }) => {
-    if (entriesList.length === 0) return <div className="flex-1 pb-[96px]" />;
+  const EntryList = ({ entriesList, currentDateStr, isClosed }) => {
+    if (entriesList.length === 0 && !isClosed) return <div className="flex-1 pb-[96px]" />;
 
     return (
       <div className="pt-[4px] pb-[120px]">
+        {isClosed && (
+          <div className="mb-[64px] min-h-[32px] relative z-[45]">
+             <p className="text-[22px] sm:text-[24px] leading-[32px] font-bold text-red-700 tracking-wide break-words m-0" style={{ fontFamily: "'Sora', sans-serif" }}>
+               {isClosed.content}
+             </p>
+          </div>
+        )}
         {entriesList.map((entry) => (
           <div 
             key={entry.id + (entry.type === 'reminder' ? currentDateStr : '')} 
@@ -727,17 +729,8 @@ export default function App() {
           </div>
         </div>
 
-        {isClosed && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-             <div className="transform -rotate-12 border-4 border-red-500/20 rounded-2xl p-6 text-center bg-white/40 backdrop-blur-sm shadow-xl">
-                <h2 className="text-red-500/80 font-black text-4xl uppercase tracking-widest border-b-2 border-red-500/20 pb-2 mb-2" style={{fontFamily: "'Sora', sans-serif"}}>CLOSED</h2>
-                <p className="text-red-700/80 font-bold text-xl uppercase tracking-wider" style={{fontFamily: "'Sora', sans-serif"}}>{isClosed.content}</p>
-             </div>
-          </div>
-        )}
-
         <div className="w-full flex-1 overflow-y-auto z-10 scrollbar-hide relative px-4 sm:px-10" style={{ backgroundImage: `repeating-linear-gradient(transparent, transparent 31px, rgba(178, 138, 90, 0.2) 31px, rgba(178, 138, 90, 0.2) 32px)`, backgroundAttachment: 'local', backgroundPosition: '0 0' }}>
-          <EntryList entriesList={sortedDisplayEntries} currentDateStr={targetDateStr} />
+          <EntryList entriesList={sortedDisplayEntries} currentDateStr={targetDateStr} isClosed={isClosed} />
         </div>
       </motion.div>
     );
@@ -1237,12 +1230,7 @@ export default function App() {
           <motion.button 
             initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} 
             onClick={() => {
-              const isClosed = allData.find(e => e.type === 'closed_day' && e.dateStr === toLocalISODate(currentDate));
-              if (isClosed) {
-                setClosedDayAlert(isClosed.content);
-              } else {
-                handleOpenModal(null);
-              }
+              handleOpenModal(null); // Just opens the modal directly!
             }} 
             className="fixed right-6 bottom-[84px] sm:right-8 sm:bottom-[96px] z-[50] w-[60px] h-[60px] sm:w-[64px] sm:h-[64px] rounded-full text-white shadow-[0_8px_30px_rgba(178,138,90,0.4)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all" style={{ backgroundColor: COLORS.accent }} title="Add Entry">
             <Plus size={30} strokeWidth={2.5} />
@@ -1295,26 +1283,9 @@ export default function App() {
               <h3 className="text-red-900 font-bold text-lg mb-2">Reopen This Day?</h3>
               <p className="text-red-700/70 text-sm mb-6">This will remove the closed status and allow new entries to be added to this date again.</p>
               <div className="flex flex-col gap-2">
-                <button onClick={async () => { await deleteFromFirebase(uncloseDayModal); setUncloseDayModal(null); setClosedDayAlert(null); }} className="w-full py-3 rounded-xl bg-red-500 text-white font-bold transition-colors active:scale-95">Confirm Reopen</button>
+                <button onClick={async () => { await deleteFromFirebase(uncloseDayModal); setUncloseDayModal(null); }} className="w-full py-3 rounded-xl bg-red-500 text-white font-bold transition-colors active:scale-95">Confirm Reopen</button>
                 <button onClick={() => setUncloseDayModal(null)} className="w-full py-2 rounded-xl text-red-900/60 font-medium transition-colors hover:text-red-900">Cancel</button>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {closedDayAlert && !uncloseDayModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setClosedDayAlert(null)}>
-            <div className="bg-[#FFF0F0] p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center border border-red-200" onClick={e => e.stopPropagation()}>
-              <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center text-red-500 mx-auto mb-4"><Ban size={32} /></div>
-              <h3 className="text-red-900 font-bold text-lg mb-2">Day Closed</h3>
-              <p className="text-red-700/70 text-sm mb-4">You cannot add entries to this date.</p>
-              <div className="bg-white border border-red-100 rounded-xl p-3 mb-6">
-                  <span className="text-xs text-red-400 font-bold uppercase tracking-wider block mb-1">Reason</span>
-                  <span className="text-red-800 font-medium">{closedDayAlert}</span>
-              </div>
-              <button onClick={() => setClosedDayAlert(null)} className="w-full py-3 rounded-xl bg-red-500 text-white font-bold transition-colors active:scale-95">Understood</button>
             </div>
           </motion.div>
         )}
@@ -1353,7 +1324,7 @@ export default function App() {
             <div className="bg-[#FFF0F0] p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center relative overflow-hidden border border-red-200">
               <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center text-red-500 mx-auto mb-4"><Ban size={32} /></div>
               <h3 className="text-red-900 font-bold text-lg mb-2">Close This Day</h3>
-              <p className="text-red-700/70 text-sm mb-4">You won't be able to add new diary entries to this date.</p>
+              <p className="text-red-700/70 text-sm mb-4">Mark this date as closed. You can still manually add notes later if needed.</p>
               <input type="text" placeholder="Reason (e.g. Legislative Assembly)" value={closeDayReason} onChange={e=>setCloseDayReason(e.target.value)} className="w-full bg-white border border-red-200 rounded-xl px-4 py-3 outline-none focus:border-red-500 mb-4 text-[#1A1A1A]" autoFocus />
               <div className="flex flex-col gap-2">
                 <button onClick={handleCloseDay} disabled={!closeDayReason.trim()} className="py-3 rounded-xl bg-red-500 text-white font-bold transition-colors disabled:opacity-50">Confirm Close Day</button>
