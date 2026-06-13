@@ -4,7 +4,8 @@ import {
   Plus, Calendar as CalendarIcon, X, Check, Bell, Book, Phone, 
   Edit2, Trash2, CheckCircle, Clock, Crown, User, Lock, BookOpen, 
   Target, Settings, Download, Upload, Trash, LogOut, 
-  StickyNote, Ban, Search, AlertCircle, ListTodo, CalendarCheck
+  StickyNote, Ban, Search, AlertCircle, ListTodo, CalendarCheck,
+  History
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
@@ -170,6 +171,7 @@ export default function App() {
   const [activeEntryMenu, setActiveEntryMenu] = useState(null);
   const [deleteSeriesModal, setDeleteSeriesModal] = useState(null); 
   const [showRemindersModal, setShowRemindersModal] = useState(false);
+  const [showRecentModal, setShowRecentModal] = useState(false);
   const [closeDayModal, setCloseDayModal] = useState(false);
   const [uncloseDayModal, setUncloseDayModal] = useState(null);
   const [closeDayReason, setCloseDayReason] = useState("");
@@ -189,6 +191,16 @@ export default function App() {
   const flipTimeoutRef = useRef(null);
   const flipIntervalRef = useRef(null);
   const currentYear = new Date().getFullYear();
+
+  // Recent additions logic (Last 48 hours based on createdAt)
+  const fortyEightHoursAgo = Date.now() - (48 * 60 * 60 * 1000);
+  const recentAdditions = allData.filter(e =>
+    e.type === 'diary' &&
+    !e.isPrivate &&
+    (e.createdAt || e.timestamp) >= fortyEightHoursAgo
+  ).sort((a, b) => (b.createdAt || b.timestamp) - (a.createdAt || a.timestamp));
+
+  const recentUncopiedCount = recentAdditions.filter(e => !e.copiedToPhysical).length;
 
   useEffect(() => {
     const link = document.createElement('link');
@@ -276,6 +288,7 @@ export default function App() {
     setActiveEntryMenu(null);
     setIsModalOpen(false);
     setShowRemindersModal(false);
+    setShowRecentModal(false);
     setCloseDayModal(false);
     setUncloseDayModal(null);
     setDeleteSeriesModal(null);
@@ -413,6 +426,7 @@ export default function App() {
       type: entryType,
       content: newEntryText.trim(),
       timestamp: entryDateTime.getTime(),
+      createdAt: editingEntryId ? (allData.find(e => e.id === editingEntryId)?.createdAt || Date.now()) : Date.now()
     };
 
     let newEntry;
@@ -661,10 +675,12 @@ export default function App() {
     let sortedDisplayEntries = [];
     if (loginRole === 'sub') {
       const visibleDiaryEntries = diaryEntries.filter(e => !e.isPrivate);
-      const unmarked = visibleDiaryEntries.filter(e => !e.copiedToPhysical).sort((a, b) => b.timestamp - a.timestamp);
+      // Sort strictly by Event Time (timestamp) ascending (e.g. 10 AM then 5 PM)
+      const unmarked = visibleDiaryEntries.filter(e => !e.copiedToPhysical).sort((a, b) => a.timestamp - b.timestamp);
       const marked = visibleDiaryEntries.filter(e => e.copiedToPhysical).sort((a, b) => a.timestamp - b.timestamp);
       sortedDisplayEntries = [...unmarked, ...marked];
     } else {
+      // Sort strictly by Event Time (timestamp) ascending (e.g. 10 AM then 5 PM)
       sortedDisplayEntries = [...reminders, ...diaryEntries].sort((a, b) => a.timestamp - b.timestamp);
     }
 
@@ -685,26 +701,36 @@ export default function App() {
         <motion.div className="absolute inset-0 bg-gradient-to-r from-black/25 via-black/5 to-transparent pointer-events-none z-20" initial={{ opacity: 1, x: customDir > 0 ? '100%' : '-100%' }} animate={{ opacity: 0, x: '0%' }} exit={{ opacity: 1, x: customDir > 0 ? '-100%' : '100%' }} transition={{ duration: transitionOptions.duration, ease: "easeOut" }} />
         
         <div className="w-full z-[60] flex items-center justify-between pt-5 pb-3 border-b border-[rgba(178,138,90,0.3)] bg-transparent backdrop-blur-sm shrink-0 px-4 sm:px-8 relative" onPointerDown={(e) => e.stopPropagation()}>
-          <div className="w-11 h-11 flex items-center justify-start z-50">
+          <div className="w-auto flex items-center justify-start gap-1 z-50">
             {loginRole === 'main' ? (
               <button onClick={(e) => { e.stopPropagation(); setShowRemindersModal(true); }} className="w-10 h-10 flex items-center justify-center text-[#B28A5A] hover:bg-black/5 rounded-full transition-colors active:scale-90 relative" title="Today's Reminders">
                 <Bell size={22} />
                 {reminders.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />}
               </button>
             ) : (
-              <button onClick={(e) => { e.stopPropagation(); setShowLogoutConfirm(true); }} className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full transition-colors active:scale-90 relative" title="Sign Out">
-                 <LogOut size={20} />
-              </button>
+              <>
+                <button onClick={(e) => { e.stopPropagation(); setShowLogoutConfirm(true); }} className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full transition-colors active:scale-90 relative" title="Sign Out">
+                   <LogOut size={20} />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setShowRecentModal(true); }} className="w-10 h-10 flex items-center justify-center text-[#B28A5A] hover:bg-black/5 rounded-full transition-colors active:scale-90 relative" title="Recent Additions">
+                  <History size={22} />
+                  {recentUncopiedCount > 0 && (
+                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#F7F3EA]">
+                      {recentUncopiedCount}
+                    </span>
+                  )}
+                </button>
+              </>
             )}
           </div> 
           
-          <label className="text-center cursor-pointer active:scale-95 transition-transform relative group z-[70]">
+          <label className="text-center cursor-pointer active:scale-95 transition-transform relative group z-[70] ml-2 mr-2">
             <input type="date" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" value={targetDateStr} onChange={(e) => handleJumpDate(e.target.value)} />
             <h1 className="text-[20px] sm:text-2xl font-bold tracking-tight text-[#1A1A1A] group-hover:text-[#B28A5A] transition-colors">{formatDate(date)}</h1>
             <p className="text-xs font-medium uppercase tracking-[0.2em] mt-0.5 text-[#B28A5A]">{getDayName(date)}</p>
           </label>
 
-          <div className="flex items-center gap-1 z-[70] w-20 justify-end">
+          <div className="flex items-center gap-1 z-[70] w-auto min-w-[40px] justify-end">
             {loginRole === 'main' && (
               <button 
                 onPointerDown={(e) => {
@@ -1274,6 +1300,50 @@ export default function App() {
       </div>
 
       {renderEntryModal()}
+
+      <AnimatePresence>
+        {showRecentModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowRecentModal(false)}>
+            <div className="bg-[#F7F3EA] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col max-h-[80vh]" onClick={e=>e.stopPropagation()}>
+              <PaperTexture />
+              <div className="p-4 border-b border-[#B28A5A]/20 flex justify-between items-center relative z-10 bg-[#EAE3D2]">
+                <h3 className="font-bold text-[#1A1A1A] flex items-center gap-2"><History size={18}/> Recent Additions (48h)</h3>
+                <button onClick={() => setShowRecentModal(false)} className="text-black/50 hover:text-black p-1"><X size={20}/></button>
+              </div>
+              <div className="p-4 relative z-10 overflow-y-auto flex-1">
+                {recentAdditions.length === 0 ? (
+                  <p className="text-center text-black/40 py-4 font-medium">No recent additions in the last 48 hours.</p>
+                ) : (
+                  recentAdditions.map(entry => (
+                    <div key={entry.id} className="mb-3 p-3 bg-white/60 border border-[#B28A5A]/30 rounded-xl flex justify-between items-start gap-3 relative shadow-sm">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <span className="text-[11px] font-bold text-[#B28A5A] bg-[#B28A5A]/10 border border-[#B28A5A]/20 px-2 py-0.5 rounded">
+                            {formatDate(new Date(entry.timestamp))}
+                          </span>
+                          <span className="text-[11px] font-bold text-red-600 bg-red-100 border border-red-200 px-2 py-0.5 rounded">
+                            {entry.time}
+                          </span>
+                        </div>
+                        <p className="text-[#1A1A1A] text-[17px] leading-tight mt-1" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600 }}>{entry.content}</p>
+                      </div>
+                      <div className="flex items-center justify-center shrink-0 pt-1">
+                        {!entry.copiedToPhysical ? (
+                          <button onClick={(e) => { e.stopPropagation(); saveToFirebase(entry.id, { ...entry, copiedToPhysical: true }); }} className="w-10 h-10 flex items-center justify-center text-[#B28A5A]/60 hover:text-[#B28A5A] hover:bg-[#B28A5A]/10 rounded-full transition-all active:scale-90" title="Mark as copied to Physical Diary">
+                            <BookOpen size={20} />
+                          </button>
+                        ) : (
+                          <span className="text-green-600 font-bold select-none text-2xl pr-2">✓</span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {uncloseDayModal && (
