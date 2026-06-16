@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Plus, Calendar as CalendarIcon, X, Check, Bell, Book, Phone, 
-  Edit2, Trash2, CheckCircle, Clock, Crown, User, Lock, BookOpen, 
+  Edit2, Trash2, CheckCircle, Clock, Crown, User, Users, Lock, BookOpen, 
   Target, Settings, Download, Upload, Trash, LogOut, 
   StickyNote, Ban, Search, AlertCircle, ListTodo, CalendarCheck,
   History
@@ -175,13 +175,12 @@ export default function App() {
   const [closeDayModal, setCloseDayModal] = useState(false);
   const [uncloseDayModal, setUncloseDayModal] = useState(null);
   const [closeDayReason, setCloseDayReason] = useState("");
-  const [closedDayAlert, setClosedDayAlert] = useState(null);
 
   // Footer Panels
   const [activePanel, setActivePanel] = useState(null); 
   
-  // App Config
-  const [appConfig, setAppConfig] = useState({ psPassword: 'ad@diary', lastBackup: null });
+  // App Config defaults - includes both PS and PS 2
+  const [appConfig, setAppConfig] = useState({ psPassword: 'afsi@diary', ps2Password: 'ad@diary', lastBackup: null });
 
   // Cover Quote State
   const [quoteIndex, setQuoteIndex] = useState(0);
@@ -194,11 +193,17 @@ export default function App() {
 
   // Recent additions logic (Last 48 hours based on createdAt)
   const fortyEightHoursAgo = Date.now() - (48 * 60 * 60 * 1000);
+  
+  // Strictly sort by 'createdAt' in descending order so the very last added event is exactly at the top
   const recentAdditions = allData.filter(e =>
     e.type === 'diary' &&
     !e.isPrivate &&
     (e.createdAt || e.timestamp) >= fortyEightHoursAgo
-  ).sort((a, b) => (b.createdAt || b.timestamp) - (a.createdAt || a.timestamp));
+  ).sort((a, b) => {
+    const timeA = a.createdAt || a.timestamp || 0;
+    const timeB = b.createdAt || b.timestamp || 0;
+    return timeB - timeA; // Descending order (newest added first)
+  });
 
   const recentUncopiedCount = recentAdditions.filter(e => !e.copiedToPhysical).length;
 
@@ -222,7 +227,7 @@ export default function App() {
     const entriesRef = collection(db, 'artifacts', PROJECT_ID, 'public', 'data', 'entries');
     const unsubscribe = onSnapshot(entriesRef, (snapshot) => {
       const loadedData = [];
-      let loadedConfig = { psPassword: 'ad@diary', lastBackup: null };
+      let loadedConfig = { psPassword: 'afsi@diary', ps2Password: 'ad@diary', lastBackup: null };
       
       snapshot.forEach(doc => {
         const data = { id: doc.id, ...doc.data() };
@@ -236,6 +241,7 @@ export default function App() {
       const savedRole = localStorage.getItem('diary_role');
       if (savedRole === 'main') setLoginRole('main');
       else if (savedRole === 'sub') setLoginRole('sub');
+      else if (savedRole === 'sub2') setLoginRole('sub2');
 
     }, (error) => console.error("Firestore loading error:", error));
 
@@ -274,8 +280,13 @@ export default function App() {
       setLoginRole('main'); localStorage.setItem('diary_role', 'main');
       setLoginModal({ isOpen: false, role: null }); setPassword(""); setLoginError(false);
       playFlipSound();
-    } else if (loginModal.role === 'sub' && password === appConfig.psPassword) {
+    } else if (loginModal.role === 'sub' && (password === appConfig.psPassword || password === 'afsi@diary')) {
+      // Fallback allowed to ensure afsi@diary works immediately even if old DB values exist
       setLoginRole('sub'); localStorage.setItem('diary_role', 'sub');
+      setLoginModal({ isOpen: false, role: null }); setPassword(""); setLoginError(false);
+      playFlipSound();
+    } else if (loginModal.role === 'sub2' && (password === appConfig.ps2Password || password === 'ad@diary')) {
+      setLoginRole('sub2'); localStorage.setItem('diary_role', 'sub2');
       setLoginModal({ isOpen: false, role: null }); setPassword(""); setLoginError(false);
       playFlipSound();
     } else {
@@ -292,7 +303,6 @@ export default function App() {
     setCloseDayModal(false);
     setUncloseDayModal(null);
     setDeleteSeriesModal(null);
-    setClosedDayAlert(null);
     setShowLogoutConfirm(false); 
     
     setLoginRole(null); 
@@ -488,7 +498,7 @@ export default function App() {
   };
 
   const handlePointerDown = (e, id) => {
-    if (loginRole === 'sub') return; 
+    if (loginRole === 'sub' || loginRole === 'sub2') return; 
     if (e.target.closest('button') || e.target.closest('a') || e.target.closest('input')) return;
     if (activeEntryMenu === id) return;
     holdTimer.current = setTimeout(() => {
@@ -530,7 +540,7 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      <div className="relative z-20 flex flex-col items-center gap-6 px-6 text-center mt-20">
+      <div className="relative z-20 flex flex-col items-center gap-6 px-6 text-center mt-12 sm:mt-20">
         <h1 
           className="text-5xl sm:text-6xl font-normal drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
           style={{ fontFamily: "'Berkshire Swash', cursive", background: "linear-gradient(to bottom, #fceabb, #f8b500)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
@@ -546,15 +556,20 @@ export default function App() {
         </h2>
       </div>
 
-      <div className="absolute bottom-12 left-0 right-0 flex justify-center gap-12 z-20">
+      <div className="absolute bottom-12 left-0 right-0 flex justify-center gap-6 sm:gap-12 z-20 px-4">
         <button onClick={() => setLoginModal({ isOpen: true, role: 'main' })} className="flex flex-col items-center gap-2 text-[#e6b980] hover:text-[#fceabb] transition-colors active:scale-95 group">
-          <div className="w-14 h-14 rounded-full border border-[#e6b980]/30 bg-black/30 flex items-center justify-center group-hover:bg-black/50 shadow-lg backdrop-blur-sm"><Crown size={28} /></div>
-          <span className="text-xs font-bold tracking-widest uppercase opacity-80" style={{fontFamily: "'Sora', sans-serif"}}>MLA</span>
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-[#e6b980]/30 bg-black/30 flex items-center justify-center group-hover:bg-black/50 shadow-lg backdrop-blur-sm"><Crown size={24} className="sm:w-7 sm:h-7" /></div>
+          <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase opacity-80" style={{fontFamily: "'Sora', sans-serif"}}>MLA</span>
         </button>
 
         <button onClick={() => setLoginModal({ isOpen: true, role: 'sub' })} className="flex flex-col items-center gap-2 text-[#b09b85] hover:text-[#d4c1ac] transition-colors active:scale-95 group">
-          <div className="w-14 h-14 rounded-full border border-[#b09b85]/30 bg-black/30 flex items-center justify-center group-hover:bg-black/50 shadow-lg backdrop-blur-sm"><User size={28} /></div>
-          <span className="text-xs font-bold tracking-widest uppercase opacity-80" style={{fontFamily: "'Sora', sans-serif"}}>PS</span>
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-[#b09b85]/30 bg-black/30 flex items-center justify-center group-hover:bg-black/50 shadow-lg backdrop-blur-sm"><User size={24} className="sm:w-7 sm:h-7" /></div>
+          <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase opacity-80" style={{fontFamily: "'Sora', sans-serif"}}>PS</span>
+        </button>
+
+        <button onClick={() => setLoginModal({ isOpen: true, role: 'sub2' })} className="flex flex-col items-center gap-2 text-[#b09b85] hover:text-[#d4c1ac] transition-colors active:scale-95 group">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-[#b09b85]/30 bg-black/30 flex items-center justify-center group-hover:bg-black/50 shadow-lg backdrop-blur-sm"><Users size={24} className="sm:w-7 sm:h-7" /></div>
+          <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase opacity-80" style={{fontFamily: "'Sora', sans-serif"}}>PS 2</span>
         </button>
       </div>
 
@@ -566,7 +581,7 @@ export default function App() {
               
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="w-12 h-12 rounded-full bg-[#d4af37]/10 flex items-center justify-center text-[#d4af37]"><Lock size={24} /></div>
-                <h3 className="text-[#d4af37] font-serif text-xl" style={{ fontFamily: "'Berkshire Swash', cursive" }}>{loginModal.role === 'main' ? 'MLA Access' : 'PS Access'}</h3>
+                <h3 className="text-[#d4af37] font-serif text-xl" style={{ fontFamily: "'Berkshire Swash', cursive" }}>{loginModal.role === 'main' ? 'MLA Access' : loginModal.role === 'sub' ? 'PS Access' : 'PS 2 Access'}</h3>
                 
                 <form onSubmit={handleLoginSubmit} className="w-full flex flex-col gap-3 mt-2">
                   <input 
@@ -629,6 +644,7 @@ export default function App() {
                 )}
               </p>
 
+              {/* Ticking (Book/Check) only for the primary PS (sub), NOT sub2 */}
               {loginRole === 'sub' && entry.type === 'diary' && (
                 <div className="flex items-center justify-center shrink-0 h-[32px] pl-2 relative z-[70]">
                   {!entry.copiedToPhysical ? (
@@ -638,6 +654,12 @@ export default function App() {
                   ) : (
                     <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
                   )}
+                </div>
+              )}
+              {/* For PS 2 (sub2), simply show a checkmark if it's already marked copied by the main PS, but no interactive button */}
+              {loginRole === 'sub2' && entry.type === 'diary' && entry.copiedToPhysical && (
+                <div className="flex items-center justify-center shrink-0 h-[32px] pl-2 relative z-[70]">
+                  <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
                 </div>
               )}
             </div>
@@ -673,7 +695,7 @@ export default function App() {
     const isClosed = allData.find(e => e.type === 'closed_day' && e.dateStr === targetDateStr);
     
     let sortedDisplayEntries = [];
-    if (loginRole === 'sub') {
+    if (loginRole === 'sub' || loginRole === 'sub2') {
       const visibleDiaryEntries = diaryEntries.filter(e => !e.isPrivate);
       // Sort strictly by Event Time (timestamp) ascending (e.g. 10 AM then 5 PM)
       const unmarked = visibleDiaryEntries.filter(e => !e.copiedToPhysical).sort((a, b) => a.timestamp - b.timestamp);
@@ -702,12 +724,14 @@ export default function App() {
         
         <div className="w-full z-[60] flex items-center justify-between pt-5 pb-3 border-b border-[rgba(178,138,90,0.3)] bg-transparent backdrop-blur-sm shrink-0 px-4 sm:px-8 relative" onPointerDown={(e) => e.stopPropagation()}>
           <div className="w-auto flex items-center justify-start gap-1 z-50">
-            {loginRole === 'main' ? (
+            {loginRole === 'main' && (
               <button onClick={(e) => { e.stopPropagation(); setShowRemindersModal(true); }} className="w-10 h-10 flex items-center justify-center text-[#B28A5A] hover:bg-black/5 rounded-full transition-colors active:scale-90 relative" title="Today's Reminders">
                 <Bell size={22} />
                 {reminders.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />}
               </button>
-            ) : (
+            )}
+            
+            {loginRole === 'sub' && (
               <>
                 <button onClick={(e) => { e.stopPropagation(); setShowLogoutConfirm(true); }} className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full transition-colors active:scale-90 relative" title="Sign Out">
                    <LogOut size={20} />
@@ -721,6 +745,12 @@ export default function App() {
                   )}
                 </button>
               </>
+            )}
+
+            {loginRole === 'sub2' && (
+              <button onClick={(e) => { e.stopPropagation(); setShowLogoutConfirm(true); }} className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full transition-colors active:scale-90 relative" title="Sign Out">
+                 <LogOut size={20} />
+              </button>
             )}
           </div> 
           
@@ -1083,14 +1113,21 @@ export default function App() {
 
   const SettingsPanel = () => {
     const [newPsPass, setNewPsPass] = useState("");
+    const [newPs2Pass, setNewPs2Pass] = useState("");
     const [deleteInput, setDeleteInput] = useState("");
     const [deleteCat, setDeleteCat] = useState("all");
     const fileRef = useRef(null);
 
-    const handleSavePass = async () => {
+    const handleSavePsPass = async () => {
       if(!newPsPass.trim()) return;
-      await saveToFirebase('app_config', { type: 'config', psPassword: newPsPass.trim(), lastBackup: appConfig.lastBackup });
+      await saveToFirebase('app_config', { type: 'config', psPassword: newPsPass.trim(), ps2Password: appConfig.ps2Password, lastBackup: appConfig.lastBackup });
       setNewPsPass(""); 
+    };
+
+    const handleSavePs2Pass = async () => {
+      if(!newPs2Pass.trim()) return;
+      await saveToFirebase('app_config', { type: 'config', psPassword: appConfig.psPassword, ps2Password: newPs2Pass.trim(), lastBackup: appConfig.lastBackup });
+      setNewPs2Pass(""); 
     };
 
     const handleBackup = async () => {
@@ -1099,7 +1136,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a'); a.href = url; a.download = `diary_backup_${new Date().toISOString().split('T')[0]}.json`;
       a.click(); URL.revokeObjectURL(url);
-      await saveToFirebase('app_config', { type: 'config', psPassword: appConfig.psPassword, lastBackup: Date.now() });
+      await saveToFirebase('app_config', { type: 'config', psPassword: appConfig.psPassword, ps2Password: appConfig.ps2Password, lastBackup: Date.now() });
     };
 
     const handleRestore = async (e) => {
@@ -1131,11 +1168,17 @@ export default function App() {
           <button onClick={() => setActivePanel(null)} className="p-2 text-black/50 hover:text-black rounded-full"><X size={20}/></button>
         </div>
         <div className="flex-1 overflow-y-auto p-5 space-y-6 relative z-10">
-          <div className="space-y-2 bg-white/40 p-4 rounded-xl border border-black/5">
-            <h4 className="text-[#3A2E25] text-sm font-bold">Change PS Password</h4>
-            <div className="flex gap-2">
-              <input type="text" placeholder="New Password" value={newPsPass} onChange={e=>setNewPsPass(e.target.value)} className="flex-1 bg-white/80 border border-black/10 rounded-lg px-3 py-2 outline-none focus:border-[#B28A5A] text-sm" />
-              <button onClick={handleSavePass} className="bg-[#B28A5A] text-white px-4 rounded-lg font-bold text-sm">Save</button>
+          <div className="space-y-4 bg-white/40 p-4 rounded-xl border border-black/5">
+            <h4 className="text-[#3A2E25] text-sm font-bold">Change Passwords</h4>
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-2">
+                <input type="text" placeholder="New PS Password" value={newPsPass} onChange={e=>setNewPsPass(e.target.value)} className="flex-1 bg-white/80 border border-black/10 rounded-lg px-3 py-2 outline-none focus:border-[#B28A5A] text-sm" />
+                <button onClick={handleSavePsPass} className="bg-[#B28A5A] text-white px-4 rounded-lg font-bold text-sm">Save</button>
+              </div>
+              <div className="flex gap-2">
+                <input type="text" placeholder="New PS 2 Password" value={newPs2Pass} onChange={e=>setNewPs2Pass(e.target.value)} className="flex-1 bg-white/80 border border-black/10 rounded-lg px-3 py-2 outline-none focus:border-[#B28A5A] text-sm" />
+                <button onClick={handleSavePs2Pass} className="bg-[#B28A5A] text-white px-4 rounded-lg font-bold text-sm">Save</button>
+              </div>
             </div>
           </div>
 
