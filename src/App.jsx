@@ -162,9 +162,15 @@ export default function App() {
   const [entryDate, setEntryDate] = useState("");
   const [entryType, setEntryType] = useState("diary");
   const [entryPhone, setEntryPhone] = useState("");
+  
+  // Time Picker states
   const [entryHour, setEntryHour] = useState("12");
   const [entryMinute, setEntryMinute] = useState("00");
   const [entryAmPm, setEntryAmPm] = useState("AM");
+  const [entryEndHour, setEntryEndHour] = useState("01");
+  const [entryEndMinute, setEntryEndMinute] = useState("15");
+  const [entryEndAmPm, setEntryEndAmPm] = useState("PM");
+
   const [reminderFrequency, setReminderFrequency] = useState("none");
   const [entryPrivate, setEntryPrivate] = useState(false);
 
@@ -179,7 +185,7 @@ export default function App() {
   // Footer Panels
   const [activePanel, setActivePanel] = useState(null); 
   
-  // App Config defaults - includes both PS and PS 2
+  // App Config
   const [appConfig, setAppConfig] = useState({ psPassword: 'afsi@diary', ps2Password: 'ad@diary', lastBackup: null });
 
   // Cover Quote State
@@ -191,18 +197,17 @@ export default function App() {
   const flipIntervalRef = useRef(null);
   const currentYear = new Date().getFullYear();
 
-  // Recent additions logic (Last 48 hours based on createdAt)
-  const fortyEightHoursAgo = Date.now() - (48 * 60 * 60 * 1000);
+  // Recent additions logic (Last 7 Days based on createdAt)
+  const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
   
-  // Strictly sort by 'createdAt' in descending order so the very last added event is exactly at the top
   const recentAdditions = allData.filter(e =>
     e.type === 'diary' &&
     !e.isPrivate &&
-    (e.createdAt || e.timestamp) >= fortyEightHoursAgo
+    (e.createdAt || e.timestamp) >= sevenDaysAgo
   ).sort((a, b) => {
     const timeA = a.createdAt || a.timestamp || 0;
     const timeB = b.createdAt || b.timestamp || 0;
-    return timeB - timeA; // Descending order (newest added first)
+    return timeB - timeA; 
   });
 
   const recentUncopiedCount = recentAdditions.filter(e => !e.copiedToPhysical).length;
@@ -281,7 +286,6 @@ export default function App() {
       setLoginModal({ isOpen: false, role: null }); setPassword(""); setLoginError(false);
       playFlipSound();
     } else if (loginModal.role === 'sub' && (password === appConfig.psPassword || password === 'afsi@diary')) {
-      // Fallback allowed to ensure afsi@diary works immediately even if old DB values exist
       setLoginRole('sub'); localStorage.setItem('diary_role', 'sub');
       setLoginModal({ isOpen: false, role: null }); setPassword(""); setLoginError(false);
       playFlipSound();
@@ -388,6 +392,47 @@ export default function App() {
     setIsFastFlipping(false);
   };
 
+  const calculateEndTime = (hStr, mStr, ampmStr) => {
+    let h = parseInt(hStr, 10);
+    let m = parseInt(mStr, 10);
+    if (ampmStr === 'PM' && h !== 12) h += 12;
+    if (ampmStr === 'AM' && h === 12) h = 0;
+    
+    m += 15;
+    if (m >= 60) { m -= 60; h += 1; }
+    h += 1; 
+    
+    const endAmPm = h >= 12 && h < 24 ? 'PM' : 'AM';
+    let endH = h % 12;
+    if (endH === 0) endH = 12;
+    
+    return {
+       endH: String(endH).padStart(2, '0'),
+       endM: String(m).padStart(2, '0'),
+       endAmPm: endAmPm
+    };
+  };
+
+  const handleHourChange = (val) => {
+    setEntryHour(val);
+    setEntryMinute("00");
+    const { endH, endM, endAmPm } = calculateEndTime(val, "00", entryAmPm);
+    setEntryEndHour(endH); setEntryEndMinute(endM); setEntryEndAmPm(endAmPm);
+  };
+
+  const handleMinuteChange = (val) => {
+    setEntryMinute(val);
+    const { endH, endM, endAmPm } = calculateEndTime(entryHour, val, entryAmPm);
+    setEntryEndHour(endH); setEntryEndMinute(endM); setEntryEndAmPm(endAmPm);
+  };
+
+  const handleAmPmChange = () => {
+    const newAmPm = entryAmPm === 'AM' ? 'PM' : 'AM';
+    setEntryAmPm(newAmPm);
+    const { endH, endM, endAmPm } = calculateEndTime(entryHour, entryMinute, newAmPm);
+    setEntryEndHour(endH); setEntryEndMinute(endM); setEntryEndAmPm(endAmPm);
+  };
+
   const handleOpenModal = (entryToEdit = null) => {
     if (entryToEdit) {
       const d = new Date(entryToEdit.timestamp || entryToEdit.startDateStr);
@@ -398,6 +443,20 @@ export default function App() {
       h = h % 12 || 12;
       
       setEntryHour(String(h).padStart(2, '0')); setEntryMinute(String(m).padStart(2, '0')); setEntryAmPm(ampm);
+      
+      if (entryToEdit.endTimestamp) {
+        const ed = new Date(entryToEdit.endTimestamp);
+        let eh = ed.getHours(); const em = ed.getMinutes();
+        const eampm = eh >= 12 ? 'PM' : 'AM';
+        eh = eh % 12 || 12;
+        setEntryEndHour(String(eh).padStart(2, '0'));
+        setEntryEndMinute(String(em).padStart(2, '0'));
+        setEntryEndAmPm(eampm);
+      } else {
+        const { endH, endM, endAmPm } = calculateEndTime(String(h).padStart(2, '0'), String(m).padStart(2, '0'), ampm);
+        setEntryEndHour(endH); setEntryEndMinute(endM); setEntryEndAmPm(endAmPm);
+      }
+
       setNewEntryText(entryToEdit.content);
       setEntryType(entryToEdit.type || "diary");
       setEntryPhone(entryToEdit.phone || "");
@@ -412,6 +471,9 @@ export default function App() {
       h = h % 12 || 12;
       
       setEntryHour(String(h).padStart(2, '0')); setEntryMinute(String(m).padStart(2, '0')); setEntryAmPm(ampm);
+      const { endH, endM, endAmPm } = calculateEndTime(String(h).padStart(2, '0'), String(m).padStart(2, '0'), ampm);
+      setEntryEndHour(endH); setEntryEndMinute(endM); setEntryEndAmPm(endAmPm);
+
       setNewEntryText(""); setEntryType("diary"); setEntryPhone(""); setReminderFrequency("none");
       setEditingEntryId(null);
       setEntryPrivate(false);
@@ -427,8 +489,17 @@ export default function App() {
     let hours24 = parseInt(entryHour, 10);
     if (entryAmPm === 'PM' && hours24 !== 12) hours24 += 12;
     if (entryAmPm === 'AM' && hours24 === 12) hours24 = 0;
-    
     const entryDateTime = new Date(year, month - 1, day, hours24, parseInt(entryMinute, 10));
+
+    let endH24 = parseInt(entryEndHour, 10);
+    if (entryEndAmPm === 'PM' && endH24 !== 12) endH24 += 12;
+    if (entryEndAmPm === 'AM' && endH24 === 12) endH24 = 0;
+    const endDateTime = new Date(year, month - 1, day, endH24, parseInt(entryEndMinute, 10));
+
+    const startTimeStr = formatTime(entryDateTime);
+    const endTimeStr = formatTime(endDateTime);
+    const finalTimeStr = entryType === 'diary' ? `${startTimeStr} - ${endTimeStr}` : startTimeStr;
+
     const newEntryId = editingEntryId || generateId();
     
     const baseEntry = {
@@ -443,8 +514,9 @@ export default function App() {
     if (entryType === 'diary') {
       newEntry = {
         ...baseEntry,
+        time: finalTimeStr,
+        endTimestamp: endDateTime.getTime(),
         dateString: entryDateTime.toDateString(), 
-        time: formatTime(entryDateTime),
         phone: entryPhone.trim(),
         completed: editingEntryId ? allData.find(e => e.id === editingEntryId)?.completed : false,
         copiedToPhysical: editingEntryId ? allData.find(e => e.id === editingEntryId)?.copiedToPhysical : false,
@@ -453,9 +525,9 @@ export default function App() {
     } else if (entryType === 'reminder') {
       newEntry = {
         ...baseEntry,
+        time: finalTimeStr,
         dateString: entryDateTime.toDateString(),
         startDateStr: toLocalISODate(entryDateTime),
-        time: formatTime(entryDateTime),
         phone: entryPhone.trim(),
         frequency: reminderFrequency,
         deletedDates: editingEntryId ? allData.find(e => e.id === editingEntryId)?.deletedDates || [] : []
@@ -499,7 +571,7 @@ export default function App() {
 
   const handlePointerDown = (e, id) => {
     if (loginRole === 'sub' || loginRole === 'sub2') return; 
-    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('input')) return;
+    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('input') || e.target.closest('select')) return;
     if (activeEntryMenu === id) return;
     holdTimer.current = setTimeout(() => {
       setActiveEntryMenu(id);
@@ -605,84 +677,105 @@ export default function App() {
   const EntryList = ({ entriesList, currentDateStr, isClosed }) => {
     if (entriesList.length === 0 && !isClosed) return <div className="flex-1 pb-[96px]" />;
 
+    const amEntries = entriesList.filter(e => new Date(e.timestamp).getHours() < 12);
+    const pmEntries = entriesList.filter(e => new Date(e.timestamp).getHours() >= 12);
+
+    const renderItems = (items) => items.map((entry) => (
+      <div 
+        key={entry.id + (entry.type === 'reminder' ? currentDateStr : '')} 
+        className="relative transition-all duration-300 select-none touch-manipulation mb-[32px] min-h-[32px]" 
+        onPointerDown={(e) => handlePointerDown(e, entry.id)} onPointerUp={handlePointerUpOrLeave} onPointerLeave={handlePointerUpOrLeave} onPointerCancel={handlePointerUpOrLeave}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <p 
+            className={`text-[20px] leading-[32px] whitespace-pre-wrap break-words m-0 flex-1 transition-all duration-300 ${entry.completed ? 'line-through opacity-40 grayscale' : ''}`}
+            style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", color: COLORS.ink, fontWeight: 600 }}
+          >
+            <span className="tracking-wider inline whitespace-nowrap" style={{ color: COLORS.redInk, fontSize: '20px', fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 'bold' }}>
+              {entry.time}&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;
+            </span>
+            {entry.content}
+            {entry.type === 'reminder' && entry.frequency !== 'none' && (
+              <span className="text-xs bg-black/5 rounded px-2 py-0.5 ml-2 font-sans tracking-wide text-black/40">⟳ {entry.frequency.toUpperCase()}</span>
+            )}
+            {entry.isPrivate && loginRole === 'main' && (
+              <span className="inline-flex items-center ml-2 text-red-500 relative z-[60]" title="Private Entry">
+                <Lock size={14} />
+              </span>
+            )}
+            {entry.phone && (
+              <span className="inline whitespace-nowrap" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontSize: '20px', fontWeight: 600 }}>
+                &nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;<a href={`tel:${entry.phone}`} className="text-[#2563EB] decoration-1 underline-offset-4 inline relative z-[60]" onClick={(e) => e.stopPropagation()}>{entry.phone}</a>
+              </span>
+            )}
+          </p>
+
+          {loginRole === 'sub' && entry.type === 'diary' && (
+            <div className="flex items-center justify-center shrink-0 h-[32px] pl-2 relative z-[70]">
+              {!entry.copiedToPhysical ? (
+                <button onClick={(e) => { e.stopPropagation(); saveToFirebase(entry.id, { ...entry, copiedToPhysical: true }); }} className="w-10 h-10 -m-2 flex items-center justify-center text-[#B28A5A]/60 hover:text-[#B28A5A] hover:bg-[#B28A5A]/10 rounded-full transition-all active:scale-90 relative z-[80]" title="Mark as copied to Physical Diary">
+                  <BookOpen size={20} />
+                </button>
+              ) : (
+                <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
+              )}
+            </div>
+          )}
+          {loginRole === 'sub2' && entry.type === 'diary' && entry.copiedToPhysical && (
+            <div className="flex items-center justify-center shrink-0 h-[32px] pl-2 relative z-[70]">
+              <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
+            </div>
+          )}
+        </div>
+
+        <AnimatePresence>
+          {activeEntryMenu === entry.id && loginRole === 'main' && (
+            <motion.div initial={{ opacity: 0, y: -5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute top-[28px] left-0 bg-white/95 backdrop-blur-md shadow-lg rounded-xl flex items-center gap-1 p-1 z-[80] border border-black/5" onPointerDown={(e) => e.stopPropagation()}>
+              <button onClick={(e) => { e.stopPropagation(); saveToFirebase(entry.id, { ...entry, completed: !entry.completed }); setActiveEntryMenu(null); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
+                <CheckCircle size={22} className={entry.completed ? 'fill-green-500 text-white' : ''} />
+              </button>
+              <div className="w-px h-6 bg-black/10 mx-0.5" />
+              <button onClick={(e) => { e.stopPropagation(); handleOpenModal(entry); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
+                <Edit2 size={20} />
+              </button>
+              <div className="w-px h-6 bg-black/10 mx-0.5" />
+              <button onClick={(e) => { e.stopPropagation(); handleDelete(entry.id, currentDateStr); }} className="p-2.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors active:scale-90">
+                <Trash2 size={20} />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    ));
+
     return (
-      <div className="pt-[4px] pb-[120px]">
+      <div className="pt-[4px] pb-[120px] min-h-full flex flex-col relative z-[45]">
         {isClosed && (
-          <div className="mb-[64px] min-h-[32px] relative z-[45]">
+          <div className="mb-[64px] min-h-[32px]">
              <p className="text-[22px] sm:text-[24px] leading-[32px] font-bold text-red-700 tracking-wide break-words m-0" style={{ fontFamily: "'Sora', sans-serif" }}>
                {isClosed.content}
              </p>
           </div>
         )}
-        {entriesList.map((entry) => (
-          <div 
-            key={entry.id + (entry.type === 'reminder' ? currentDateStr : '')} 
-            className="relative transition-all duration-300 select-none touch-manipulation mb-[32px] min-h-[32px] z-[45]" 
-            onPointerDown={(e) => handlePointerDown(e, entry.id)} onPointerUp={handlePointerUpOrLeave} onPointerLeave={handlePointerUpOrLeave} onPointerCancel={handlePointerUpOrLeave}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <p 
-                className={`text-[20px] leading-[32px] whitespace-pre-wrap break-words m-0 flex-1 transition-all duration-300 ${entry.completed ? 'line-through opacity-40 grayscale' : ''}`}
-                style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", color: COLORS.ink, fontWeight: 600 }}
-              >
-                <span className="tracking-wider inline whitespace-nowrap" style={{ color: COLORS.redInk, fontSize: '20px', fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 'bold' }}>
-                  {entry.time}&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;
-                </span>
-                {entry.content}
-                {entry.type === 'reminder' && entry.frequency !== 'none' && (
-                  <span className="text-xs bg-black/5 rounded px-2 py-0.5 ml-2 font-sans tracking-wide text-black/40">⟳ {entry.frequency.toUpperCase()}</span>
-                )}
-                {entry.isPrivate && loginRole === 'main' && (
-                  <span className="inline-flex items-center ml-2 text-red-500 relative z-[60]" title="Private Entry">
-                    <Lock size={14} />
-                  </span>
-                )}
-                {entry.phone && (
-                  <span className="inline whitespace-nowrap" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontSize: '20px', fontWeight: 600 }}>
-                    &nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;<a href={`tel:${entry.phone}`} className="text-[#2563EB] decoration-1 underline-offset-4 inline relative z-[60]" onClick={(e) => e.stopPropagation()}>{entry.phone}</a>
-                  </span>
-                )}
-              </p>
 
-              {/* Ticking (Book/Check) only for the primary PS (sub), NOT sub2 */}
-              {loginRole === 'sub' && entry.type === 'diary' && (
-                <div className="flex items-center justify-center shrink-0 h-[32px] pl-2 relative z-[70]">
-                  {!entry.copiedToPhysical ? (
-                    <button onClick={(e) => { e.stopPropagation(); saveToFirebase(entry.id, { ...entry, copiedToPhysical: true }); }} className="w-10 h-10 -m-2 flex items-center justify-center text-[#B28A5A]/60 hover:text-[#B28A5A] hover:bg-[#B28A5A]/10 rounded-full transition-all active:scale-90 relative z-[80]" title="Mark as copied to Physical Diary">
-                      <BookOpen size={20} />
-                    </button>
-                  ) : (
-                    <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
-                  )}
-                </div>
-              )}
-              {/* For PS 2 (sub2), simply show a checkmark if it's already marked copied by the main PS, but no interactive button */}
-              {loginRole === 'sub2' && entry.type === 'diary' && entry.copiedToPhysical && (
-                <div className="flex items-center justify-center shrink-0 h-[32px] pl-2 relative z-[70]">
-                  <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
-                </div>
-              )}
-            </div>
-
-            <AnimatePresence>
-              {activeEntryMenu === entry.id && loginRole === 'main' && (
-                <motion.div initial={{ opacity: 0, y: -5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute top-[28px] left-0 bg-white/95 backdrop-blur-md shadow-lg rounded-xl flex items-center gap-1 p-1 z-[80] border border-black/5" onPointerDown={(e) => e.stopPropagation()}>
-                  <button onClick={(e) => { e.stopPropagation(); saveToFirebase(entry.id, { ...entry, completed: !entry.completed }); setActiveEntryMenu(null); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
-                    <CheckCircle size={22} className={entry.completed ? 'fill-green-500 text-white' : ''} />
-                  </button>
-                  <div className="w-px h-6 bg-black/10 mx-0.5" />
-                  <button onClick={(e) => { e.stopPropagation(); handleOpenModal(entry); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
-                    <Edit2 size={20} />
-                  </button>
-                  <div className="w-px h-6 bg-black/10 mx-0.5" />
-                  <button onClick={(e) => { e.stopPropagation(); handleDelete(entry.id, currentDateStr); }} className="p-2.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors active:scale-90">
-                    <Trash2 size={20} />
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
+        {amEntries.length > 0 && (
+          <div className="relative">
+             {renderItems(amEntries)}
           </div>
-        ))}
+        )}
+
+        {pmEntries.length > 0 && (
+          <>
+            {amEntries.length > 0 && (
+              <div className="w-full border-t border-dashed border-[#B28A5A]/30 my-6 relative">
+                <span className="absolute -top-[10px] left-1/2 -translate-x-1/2 bg-[#F7F3EA] px-3 text-[11px] text-[#B28A5A] font-bold tracking-widest uppercase">Afternoon</span>
+              </div>
+            )}
+            <div className={`relative flex-1 ${amEntries.length === 0 ? 'min-h-full' : ''} bg-yellow-600/10 -mx-4 sm:-mx-10 px-4 sm:px-10 py-6 rounded-t-[2rem] border-t border-yellow-600/10 shadow-[inset_0_10px_20px_rgba(202,138,4,0.05)]`}>
+               {renderItems(pmEntries)}
+            </div>
+          </>
+        )}
       </div>
     );
   };
@@ -697,12 +790,10 @@ export default function App() {
     let sortedDisplayEntries = [];
     if (loginRole === 'sub' || loginRole === 'sub2') {
       const visibleDiaryEntries = diaryEntries.filter(e => !e.isPrivate);
-      // Sort strictly by Event Time (timestamp) ascending (e.g. 10 AM then 5 PM)
       const unmarked = visibleDiaryEntries.filter(e => !e.copiedToPhysical).sort((a, b) => a.timestamp - b.timestamp);
       const marked = visibleDiaryEntries.filter(e => e.copiedToPhysical).sort((a, b) => a.timestamp - b.timestamp);
       sortedDisplayEntries = [...unmarked, ...marked];
     } else {
-      // Sort strictly by Event Time (timestamp) ascending (e.g. 10 AM then 5 PM)
       sortedDisplayEntries = [...reminders, ...diaryEntries].sort((a, b) => a.timestamp - b.timestamp);
     }
 
@@ -723,11 +814,14 @@ export default function App() {
         <motion.div className="absolute inset-0 bg-gradient-to-r from-black/25 via-black/5 to-transparent pointer-events-none z-20" initial={{ opacity: 1, x: customDir > 0 ? '100%' : '-100%' }} animate={{ opacity: 0, x: '0%' }} exit={{ opacity: 1, x: customDir > 0 ? '-100%' : '100%' }} transition={{ duration: transitionOptions.duration, ease: "easeOut" }} />
         
         <div className="w-full z-[60] flex items-center justify-between pt-5 pb-3 border-b border-[rgba(178,138,90,0.3)] bg-transparent backdrop-blur-sm shrink-0 px-4 sm:px-8 relative" onPointerDown={(e) => e.stopPropagation()}>
-          <div className="w-auto flex items-center justify-start gap-1 z-50">
+          <div className="w-auto flex items-center justify-start gap-1 z-50 min-w-[50px]">
             {loginRole === 'main' && (
-              <button onClick={(e) => { e.stopPropagation(); setShowRemindersModal(true); }} className="w-10 h-10 flex items-center justify-center text-[#B28A5A] hover:bg-black/5 rounded-full transition-colors active:scale-90 relative" title="Today's Reminders">
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowRemindersModal(true); }} 
+                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 relative ${reminders.length > 0 ? 'bg-red-500 text-white animate-reminder-pulse shadow-md border-none' : 'text-[#B28A5A] hover:bg-black/5'}`} 
+                title="Today's Reminders"
+              >
                 <Bell size={22} />
-                {reminders.length > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full" />}
               </button>
             )}
             
@@ -754,13 +848,18 @@ export default function App() {
             )}
           </div> 
           
-          <label className="text-center cursor-pointer active:scale-95 transition-transform relative group z-[70] ml-2 mr-2">
+          <label className="text-center cursor-pointer active:scale-95 transition-transform relative group z-[70] mx-2 flex flex-col items-center">
             <input type="date" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" value={targetDateStr} onChange={(e) => handleJumpDate(e.target.value)} />
             <h1 className="text-[20px] sm:text-2xl font-bold tracking-tight text-[#1A1A1A] group-hover:text-[#B28A5A] transition-colors">{formatDate(date)}</h1>
-            <p className="text-xs font-medium uppercase tracking-[0.2em] mt-0.5 text-[#B28A5A]">{getDayName(date)}</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
+              <span className="text-[#B28A5A]">{getDayName(date)}</span>
+              {sortedDisplayEntries.length > 0 && (
+                 <span className="bg-[#B28A5A]/10 text-[#B28A5A] px-2 py-0.5 rounded-md font-extrabold">{sortedDisplayEntries.length} Events</span>
+              )}
+            </p>
           </label>
 
-          <div className="flex items-center gap-1 z-[70] w-auto min-w-[40px] justify-end">
+          <div className="flex items-center gap-1 z-[70] w-auto min-w-[50px] justify-end">
             {loginRole === 'main' && (
               <button 
                 onPointerDown={(e) => {
@@ -1233,15 +1332,8 @@ export default function App() {
                 </label>
               )}
               {entryType === 'note' && <span className="font-bold text-[#1A1A1A] text-[15px] flex items-center gap-1.5"><StickyNote size={16} className="text-[#B28A5A]"/> Keep Note</span>}
-              
-              <div className="flex items-center gap-0.5 bg-white/60 rounded-lg px-2 py-1.5 border border-[#B28A5A]/30 shadow-sm w-fit">
-                <Clock size={14} className="text-[#B28A5A] shrink-0 mr-1" />
-                <select value={entryHour} onChange={(e) => { setEntryHour(e.target.value); setEntryMinute("00"); }} className="appearance-none bg-transparent outline-none text-[#1A1A1A] text-[14px] sm:text-[15px] font-bold cursor-pointer text-center">{Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}</select>
-                <span className="text-[#1A1A1A] font-bold text-[14px] sm:text-[15px] -mx-0.5">:</span>
-                <select value={entryMinute} onChange={(e) => setEntryMinute(e.target.value)} className="appearance-none bg-transparent outline-none text-[#1A1A1A] text-[14px] sm:text-[15px] font-bold cursor-pointer text-center">{Array.from({length: 60}, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}</select>
-                <button type="button" onClick={(e) => { e.preventDefault(); setEntryAmPm(p => p === 'AM' ? 'PM' : 'AM'); }} className="appearance-none bg-[#B28A5A]/10 px-1.5 py-0.5 rounded outline-none text-[#B28A5A] text-[13px] sm:text-[14px] font-bold cursor-pointer ml-1 active:scale-90 transition-transform">{entryAmPm}</button>
-              </div>
             </div>
+            
             <div className="flex items-center gap-1 sm:gap-2 relative z-20 min-w-[80px] justify-end">
               <div className="flex items-center bg-black/5 rounded-full p-1">
                 <button onPointerDown={(e) => { e.preventDefault(); setEntryType('diary'); }} className={`p-1.5 rounded-full transition-all ${entryType === 'diary' ? 'bg-white shadow-sm text-[#B28A5A]' : 'text-black/40 hover:text-black/70'}`}><Book size={16} /></button>
@@ -1251,15 +1343,51 @@ export default function App() {
             </div>
           </div>
           
-          <div className="p-4 sm:p-6 relative z-10 flex-1">
-            <textarea ref={entryTextRef} className="w-full h-44 sm:h-56 bg-transparent outline-none resize-none text-[20px] leading-[32px] m-0 pt-[4px]" style={{ fontFamily: entryType === 'note' ? "'Comic Neue', 'A10', 'Chilanka', cursive" : "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600, color: COLORS.ink, backgroundImage: entryType==='note'?'none':`repeating-linear-gradient(transparent, transparent 31px, rgba(178, 138, 90, 0.2) 31px, rgba(178, 138, 90, 0.2) 32px)`, backgroundPosition: '0 0', backgroundAttachment: 'local' }} value={newEntryText} onChange={(e) => setNewEntryText(e.target.value)} placeholder={entryType === 'reminder' ? "What do you need to remember?" : entryType === 'note' ? "Write a permanent note..." : "Dear Diary..."} />
-            <div className="mt-4 flex items-center gap-3 border-b border-black/10 pb-2">
+          <div className="p-4 sm:p-6 relative z-10 flex-1 flex flex-col">
+            
+            {entryType !== 'note' && (
+              <div className="flex flex-col gap-3 mb-4 bg-white/50 p-4 rounded-2xl border border-black/5 shadow-sm shrink-0">
+                 <div className="flex items-center justify-between">
+                    <span className="text-[13px] sm:text-[15px] font-bold text-[#B28A5A] uppercase tracking-wider">Start Time</span>
+                    <div className="flex items-center gap-1">
+                       <select value={entryHour} onChange={e => handleHourChange(e.target.value)} className="appearance-none bg-white px-3 py-2 sm:py-2.5 rounded-xl font-bold text-[18px] sm:text-[20px] border border-black/10 outline-none text-center min-w-[60px] shadow-sm text-[#1A1A1A]">
+                          {Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                       </select>
+                       <span className="font-bold text-[18px] sm:text-[20px] text-[#1A1A1A]">:</span>
+                       <select value={entryMinute} onChange={e => handleMinuteChange(e.target.value)} className="appearance-none bg-white px-3 py-2 sm:py-2.5 rounded-xl font-bold text-[18px] sm:text-[20px] border border-black/10 outline-none text-center min-w-[60px] shadow-sm text-[#1A1A1A]">
+                          {Array.from({length: 60}, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                       </select>
+                       <button type="button" onClick={handleAmPmChange} className="bg-[#B28A5A] text-white px-4 py-2 sm:py-2.5 rounded-xl font-bold text-[18px] sm:text-[20px] shadow-sm active:scale-95 transition-transform ml-2">{entryAmPm}</button>
+                    </div>
+                 </div>
+                 
+                 {entryType === 'diary' && (
+                   <div className="flex items-center justify-between mt-2 pt-3 border-t border-black/5">
+                      <span className="text-[13px] sm:text-[15px] font-bold text-[#B28A5A] uppercase tracking-wider">End Time</span>
+                      <div className="flex items-center gap-1">
+                         <select value={entryEndHour} onChange={e => setEntryEndHour(e.target.value)} className="appearance-none bg-white/60 px-3 py-2 rounded-xl font-bold text-[16px] sm:text-[18px] border border-black/10 outline-none text-center min-w-[60px] text-[#1A1A1A]">
+                            {Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                         </select>
+                         <span className="font-bold text-[16px] sm:text-[18px] text-[#1A1A1A]">:</span>
+                         <select value={entryEndMinute} onChange={e => setEntryEndMinute(e.target.value)} className="appearance-none bg-white/60 px-3 py-2 rounded-xl font-bold text-[16px] sm:text-[18px] border border-black/10 outline-none text-center min-w-[60px] text-[#1A1A1A]">
+                            {Array.from({length: 60}, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                         </select>
+                         <button type="button" onClick={() => setEntryEndAmPm(p => p === 'AM' ? 'PM' : 'AM')} className="bg-[#B28A5A]/10 text-[#B28A5A] px-4 py-2 rounded-xl font-bold text-[16px] sm:text-[18px] active:scale-95 transition-transform ml-2">{entryEndAmPm}</button>
+                      </div>
+                   </div>
+                 )}
+              </div>
+            )}
+
+            <textarea ref={entryTextRef} className="w-full flex-1 min-h-[120px] bg-transparent outline-none resize-none text-[20px] leading-[32px] m-0 pt-[4px]" style={{ fontFamily: entryType === 'note' ? "'Comic Neue', 'A10', 'Chilanka', cursive" : "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600, color: COLORS.ink, backgroundImage: entryType==='note'?'none':`repeating-linear-gradient(transparent, transparent 31px, rgba(178, 138, 90, 0.2) 31px, rgba(178, 138, 90, 0.2) 32px)`, backgroundPosition: '0 0', backgroundAttachment: 'local' }} value={newEntryText} onChange={(e) => setNewEntryText(e.target.value)} placeholder={entryType === 'reminder' ? "What do you need to remember?" : entryType === 'note' ? "Write a permanent note..." : "Dear Diary..."} />
+            
+            <div className="mt-4 flex items-center gap-3 border-b border-black/10 pb-2 shrink-0">
               <Phone size={18} className="text-black/30" />
               <input type="tel" placeholder="Phone Number (Optional)" value={entryPhone} onChange={(e) => setEntryPhone(e.target.value)} className="bg-transparent outline-none text-[15px] w-full placeholder:text-black/30 text-[#1A1A1A]" />
             </div>
             
             {entryType === 'reminder' && (
-              <div className="mt-4 flex items-center justify-between border-b border-black/10 pb-2">
+              <div className="mt-4 flex items-center justify-between border-b border-black/10 pb-2 shrink-0">
                 <span className="text-sm font-bold text-black/40 flex items-center gap-2"><Settings size={14}/> Repeat:</span>
                 <div className="flex gap-1">
                   {[ {l:'None', v:'none'}, {l:'15D', v:'15d'}, {l:'1M', v:'1m'}, {l:'2M', v:'2m'}, {l:'3M', v:'3m'}].map(opt => (
@@ -1299,7 +1427,7 @@ export default function App() {
           <motion.button 
             initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} 
             onClick={() => {
-              handleOpenModal(null); // Just opens the modal directly!
+              handleOpenModal(null); 
             }} 
             className="fixed right-6 bottom-[84px] sm:right-8 sm:bottom-[96px] z-[50] w-[60px] h-[60px] sm:w-[64px] sm:h-[64px] rounded-full text-white shadow-[0_8px_30px_rgba(178,138,90,0.4)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all" style={{ backgroundColor: COLORS.accent }} title="Add Entry">
             <Plus size={30} strokeWidth={2.5} />
@@ -1350,21 +1478,21 @@ export default function App() {
             <div className="bg-[#F7F3EA] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative flex flex-col max-h-[80vh]" onClick={e=>e.stopPropagation()}>
               <PaperTexture />
               <div className="p-4 border-b border-[#B28A5A]/20 flex justify-between items-center relative z-10 bg-[#EAE3D2]">
-                <h3 className="font-bold text-[#1A1A1A] flex items-center gap-2"><History size={18}/> Recent Additions (48h)</h3>
+                <h3 className="font-bold text-[#1A1A1A] flex items-center gap-2"><History size={18}/> Recent Additions (7 Days)</h3>
                 <button onClick={() => setShowRecentModal(false)} className="text-black/50 hover:text-black p-1"><X size={20}/></button>
               </div>
               <div className="p-4 relative z-10 overflow-y-auto flex-1">
                 {recentAdditions.length === 0 ? (
-                  <p className="text-center text-black/40 py-4 font-medium">No recent additions in the last 48 hours.</p>
+                  <p className="text-center text-black/40 py-4 font-medium">No recent additions in the last 7 days.</p>
                 ) : (
                   recentAdditions.map(entry => (
                     <div key={entry.id} className="mb-3 p-3 bg-white/60 border border-[#B28A5A]/30 rounded-xl flex justify-between items-start gap-3 relative shadow-sm">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1.5">
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                           <span className="text-[11px] font-bold text-[#B28A5A] bg-[#B28A5A]/10 border border-[#B28A5A]/20 px-2 py-0.5 rounded">
                             {formatDate(new Date(entry.timestamp))}
                           </span>
-                          <span className="text-[11px] font-bold text-red-600 bg-red-100 border border-red-200 px-2 py-0.5 rounded">
+                          <span className="text-[11px] font-bold text-red-600 bg-red-100 border border-red-200 px-2 py-0.5 rounded whitespace-nowrap">
                             {entry.time}
                           </span>
                         </div>
@@ -1500,6 +1628,18 @@ export default function App() {
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
         input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0; width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+        
+        @keyframes reminderPulse {
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+          5% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+          10% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+          15% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+          20% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .animate-reminder-pulse {
+          animation: reminderPulse 5s infinite cubic-bezier(0.66, 0, 0, 1);
+        }
       `}} />
     </div>
   );
