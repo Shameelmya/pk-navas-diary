@@ -507,7 +507,7 @@ export default function App() {
       type: entryType,
       content: newEntryText.trim(),
       timestamp: entryDateTime.getTime(),
-      createdAt: editingEntryId ? (allData.find(e => e.id === editingEntryId)?.createdAt || Date.now()) : Date.now()
+      createdAt: editingEntryId ? (allData.find(e => e.id === editingEntryId)?.createdAt || 0) : Date.now()
     };
 
     let newEntry;
