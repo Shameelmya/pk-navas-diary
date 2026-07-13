@@ -179,8 +179,9 @@ export default function App() {
   const [showRemindersModal, setShowRemindersModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [closeDayModal, setCloseDayModal] = useState(false);
-  const [uncloseDayModal, setUncloseDayModal] = useState(null);
   const [closeDayReason, setCloseDayReason] = useState("");
+  const [uncheckConfirmEntry, setUncheckConfirmEntry] = useState(null);
+  const uncheckTimerRef = useRef(null);
 
   // Footer Panels
   const [activePanel, setActivePanel] = useState(null); 
@@ -717,7 +718,7 @@ export default function App() {
                   <BookOpen size={24} />
                 </button>
               ) : (
-                <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
+                <span className="text-green-600 font-bold select-none relative z-[80] cursor-pointer" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }} onPointerDown={(e) => { e.stopPropagation(); uncheckTimerRef.current = setTimeout(() => { if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(50); setUncheckConfirmEntry(entry); }, 3500); }} onPointerUp={(e) => { e.stopPropagation(); if (uncheckTimerRef.current) clearTimeout(uncheckTimerRef.current); }} onPointerLeave={(e) => { e.stopPropagation(); if (uncheckTimerRef.current) clearTimeout(uncheckTimerRef.current); }} onPointerCancel={(e) => { e.stopPropagation(); if (uncheckTimerRef.current) clearTimeout(uncheckTimerRef.current); }} title="Hold for 3.5s to uncheck">✓</span>
               )}
             </div>
           )}
@@ -1504,12 +1505,28 @@ export default function App() {
                             <BookOpen size={20} />
                           </button>
                         ) : (
-                          <span className="text-green-600 font-bold select-none text-2xl pr-2">✓</span>
+                          <span className="text-green-600 font-bold select-none text-2xl pr-2 cursor-pointer" onPointerDown={(e) => { e.stopPropagation(); uncheckTimerRef.current = setTimeout(() => { if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(50); setUncheckConfirmEntry(entry); }, 3500); }} onPointerUp={(e) => { e.stopPropagation(); if (uncheckTimerRef.current) clearTimeout(uncheckTimerRef.current); }} onPointerLeave={(e) => { e.stopPropagation(); if (uncheckTimerRef.current) clearTimeout(uncheckTimerRef.current); }} onPointerCancel={(e) => { e.stopPropagation(); if (uncheckTimerRef.current) clearTimeout(uncheckTimerRef.current); }} title="Hold for 3.5s to uncheck">✓</span>
                         )}
                       </div>
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {uncheckConfirmEntry && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setUncheckConfirmEntry(null)}>
+            <div className="bg-[#FFF0F0] p-6 rounded-2xl shadow-2xl w-full max-w-sm text-center border border-red-200" onClick={e => e.stopPropagation()}>
+              <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center text-red-500 mx-auto mb-4"><BookOpen size={32} /></div>
+              <h3 className="text-red-900 font-bold text-lg mb-2">Uncheck Entry?</h3>
+              <p className="text-red-700/70 text-sm mb-6">This will mark the entry as NOT copied to the Physical Diary.</p>
+              <div className="flex flex-col gap-2">
+                <button onClick={async () => { await saveToFirebase(uncheckConfirmEntry.id, { ...uncheckConfirmEntry, copiedToPhysical: false }); setUncheckConfirmEntry(null); }} className="w-full py-3 rounded-xl bg-red-500 text-white font-bold transition-colors active:scale-95">Confirm Uncheck</button>
+                <button onClick={() => setUncheckConfirmEntry(null)} className="w-full py-2 rounded-xl text-red-900/60 font-medium transition-colors hover:text-red-900">Cancel</button>
               </div>
             </div>
           </motion.div>
