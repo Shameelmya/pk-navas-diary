@@ -203,10 +203,10 @@ export default function App() {
   const recentAdditions = allData.filter(e =>
     e.type === 'diary' &&
     !e.isPrivate &&
-    (e.createdAt || e.timestamp) >= sevenDaysAgo
+    (e.createdAt || 0) >= sevenDaysAgo
   ).sort((a, b) => {
-    const timeA = a.createdAt || a.timestamp || 0;
-    const timeB = b.createdAt || b.timestamp || 0;
+    const timeA = a.createdAt || 0;
+    const timeB = b.createdAt || 0;
     return timeB - timeA; 
   });
 
