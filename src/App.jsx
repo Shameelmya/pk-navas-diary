@@ -179,6 +179,7 @@ export default function App() {
   const [showRemindersModal, setShowRemindersModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [closeDayModal, setCloseDayModal] = useState(false);
+  const [uncloseDayModal, setUncloseDayModal] = useState(null);
   const [closeDayReason, setCloseDayReason] = useState("");
   const [uncheckConfirmEntry, setUncheckConfirmEntry] = useState(null);
   const uncheckTimerRef = useRef(null);
