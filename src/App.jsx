@@ -711,10 +711,10 @@ export default function App() {
           </p>
 
           {loginRole === 'sub' && entry.type === 'diary' && (
-            <div className="flex items-center justify-center shrink-0 h-[32px] pl-2 relative z-[70]">
+            <div className="flex items-center justify-center shrink-0 min-w-[50px] h-[40px] pl-2 pr-2 relative z-[70]" onPointerDown={(e) => e.stopPropagation()}>
               {!entry.copiedToPhysical ? (
-                <button onClick={(e) => { e.stopPropagation(); saveToFirebase(entry.id, { ...entry, copiedToPhysical: true }); }} className="w-10 h-10 -m-2 flex items-center justify-center text-[#B28A5A]/60 hover:text-[#B28A5A] hover:bg-[#B28A5A]/10 rounded-full transition-all active:scale-90 relative z-[80]" title="Mark as copied to Physical Diary">
-                  <BookOpen size={20} />
+                <button onClick={(e) => { e.stopPropagation(); saveToFirebase(entry.id, { ...entry, copiedToPhysical: true }); }} className="w-12 h-12 -m-2 flex items-center justify-center text-[#B28A5A]/60 hover:text-[#B28A5A] hover:bg-[#B28A5A]/10 rounded-full transition-all active:scale-90 relative z-[80]" title="Mark as copied to Physical Diary">
+                  <BookOpen size={24} />
                 </button>
               ) : (
                 <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
@@ -722,7 +722,7 @@ export default function App() {
             </div>
           )}
           {loginRole === 'sub2' && entry.type === 'diary' && entry.copiedToPhysical && (
-            <div className="flex items-center justify-center shrink-0 h-[32px] pl-2 relative z-[70]">
+            <div className="flex items-center justify-center shrink-0 min-w-[50px] h-[40px] pl-2 pr-2 relative z-[70]" onPointerDown={(e) => e.stopPropagation()}>
               <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
             </div>
           )}
