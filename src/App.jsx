@@ -173,6 +173,8 @@ export default function App() {
 
   const [reminderFrequency, setReminderFrequency] = useState("none");
   const [entryPrivate, setEntryPrivate] = useState(false);
+  const [entryIsEvent, setEntryIsEvent] = useState(false);
+  const [psTimeSlot, setPsTimeSlot] = useState("10:00 AM - 11:00 AM");
 
   const [activeEntryMenu, setActiveEntryMenu] = useState(null);
   const [deleteSeriesModal, setDeleteSeriesModal] = useState(null); 
@@ -465,6 +467,8 @@ export default function App() {
       setReminderFrequency(entryToEdit.frequency || "none");
       setEditingEntryId(entryToEdit.id);
       setEntryPrivate(entryToEdit.isPrivate || false);
+      setEntryIsEvent(entryToEdit.isEvent || false);
+      setPsTimeSlot(entryToEdit.time || "10:00 AM - 11:00 AM");
     } else {
       setEntryDate(toLocalISODate(currentDate));
       const now = new Date();
@@ -479,6 +483,8 @@ export default function App() {
       setNewEntryText(""); setEntryType("diary"); setEntryPhone(""); setReminderFrequency("none");
       setEditingEntryId(null);
       setEntryPrivate(false);
+      setEntryIsEvent(false);
+      setPsTimeSlot("10:00 AM - 11:00 AM");
     }
     setIsModalOpen(true); setActiveEntryMenu(null); setActivePanel(null);
     setTimeout(() => entryTextRef.current?.focus(), 300);
@@ -488,19 +494,47 @@ export default function App() {
     if (!newEntryText.trim() || !entryDate) return;
     
     const [year, month, day] = entryDate.split('-').map(Number);
-    let hours24 = parseInt(entryHour, 10);
-    if (entryAmPm === 'PM' && hours24 !== 12) hours24 += 12;
-    if (entryAmPm === 'AM' && hours24 === 12) hours24 = 0;
-    const entryDateTime = new Date(year, month - 1, day, hours24, parseInt(entryMinute, 10));
+    let entryDateTime, endDateTime, finalTimeStr;
 
-    let endH24 = parseInt(entryEndHour, 10);
-    if (entryEndAmPm === 'PM' && endH24 !== 12) endH24 += 12;
-    if (entryEndAmPm === 'AM' && endH24 === 12) endH24 = 0;
-    const endDateTime = new Date(year, month - 1, day, endH24, parseInt(entryEndMinute, 10));
+    if (loginRole === 'sub' && entryType === 'diary' && !entryIsEvent) {
+      finalTimeStr = psTimeSlot;
+      const parts = psTimeSlot.split(' - ');
+      const parseTime = (tStr) => {
+         const [time, period] = tStr.split(' ');
+         let [h, m] = time.split(':').map(Number);
+         if (period === 'PM' && h !== 12) h += 12;
+         if (period === 'AM' && h === 12) h = 0;
+         return new Date(year, month - 1, day, h, m);
+      };
+      entryDateTime = parseTime(parts[0]);
+      endDateTime = parseTime(parts[1]);
+      
+      const existingEntry = allData.find(e => 
+         e.type === 'diary' && 
+         !e.isEvent && 
+         e.dateString === entryDateTime.toDateString() && 
+         e.time === finalTimeStr &&
+         e.id !== editingEntryId
+      );
+      if (existingEntry) {
+         alert("Time slot already booked. Double entry not allowed.");
+         return;
+      }
+    } else {
+      let hours24 = parseInt(entryHour, 10);
+      if (entryAmPm === 'PM' && hours24 !== 12) hours24 += 12;
+      if (entryAmPm === 'AM' && hours24 === 12) hours24 = 0;
+      entryDateTime = new Date(year, month - 1, day, hours24, parseInt(entryMinute, 10));
 
-    const startTimeStr = formatTime(entryDateTime);
-    const endTimeStr = formatTime(endDateTime);
-    const finalTimeStr = entryType === 'diary' ? `${startTimeStr} - ${endTimeStr}` : startTimeStr;
+      let endH24 = parseInt(entryEndHour, 10);
+      if (entryEndAmPm === 'PM' && endH24 !== 12) endH24 += 12;
+      if (entryEndAmPm === 'AM' && endH24 === 12) endH24 = 0;
+      endDateTime = new Date(year, month - 1, day, endH24, parseInt(entryEndMinute, 10));
+      
+      const startTimeStr = formatTime(entryDateTime);
+      const endTimeStr = formatTime(endDateTime);
+      finalTimeStr = entryType === 'diary' ? `${startTimeStr} - ${endTimeStr}` : startTimeStr;
+    }
 
     const newEntryId = editingEntryId || generateId();
     
@@ -522,7 +556,8 @@ export default function App() {
         phone: entryPhone.trim(),
         completed: editingEntryId ? allData.find(e => e.id === editingEntryId)?.completed : false,
         copiedToPhysical: editingEntryId ? allData.find(e => e.id === editingEntryId)?.copiedToPhysical : false,
-        isPrivate: entryPrivate
+        isPrivate: entryPrivate,
+        isEvent: entryIsEvent
       };
     } else if (entryType === 'reminder') {
       newEntry = {
@@ -679,8 +714,9 @@ export default function App() {
   const EntryList = ({ entriesList, currentDateStr, isClosed }) => {
     if (entriesList.length === 0 && !isClosed) return <div className="flex-1 pb-[96px]" />;
 
-    const amEntries = entriesList.filter(e => new Date(e.timestamp).getHours() < 12);
-    const pmEntries = entriesList.filter(e => new Date(e.timestamp).getHours() >= 12);
+    const amEntries = entriesList.filter(e => !e.isEvent && new Date(e.timestamp).getHours() < 12);
+    const pmEntries = entriesList.filter(e => !e.isEvent && new Date(e.timestamp).getHours() >= 12);
+    const eventEntries = entriesList.filter(e => e.isEvent);
 
     const renderItems = (items) => items.map((entry) => (
       <div 
@@ -775,6 +811,19 @@ export default function App() {
             )}
             <div className={`relative flex-1 ${amEntries.length === 0 ? 'min-h-full' : ''} bg-yellow-600/10 -mx-4 sm:-mx-10 px-4 sm:px-10 py-6 rounded-t-[2rem] border-t border-yellow-600/10 shadow-[inset_0_10px_20px_rgba(202,138,4,0.05)]`}>
                {renderItems(pmEntries)}
+            </div>
+          </>
+        )}
+
+        {eventEntries.length > 0 && (
+          <>
+            {(amEntries.length > 0 || pmEntries.length > 0) && (
+              <div className="w-full border-t border-dashed border-blue-500/30 my-6 relative">
+                <span className="absolute -top-[10px] left-1/2 -translate-x-1/2 bg-[#F7F3EA] px-3 text-[11px] text-blue-600 font-bold tracking-widest uppercase">Events</span>
+              </div>
+            )}
+            <div className={`relative flex-1 bg-blue-500/10 -mx-4 sm:-mx-10 px-4 sm:px-10 py-6 rounded-t-[2rem] border-t border-blue-500/20 shadow-[inset_0_10px_20px_rgba(59,130,246,0.05)]`}>
+               {renderItems(eventEntries)}
             </div>
           </>
         )}
@@ -1339,7 +1388,9 @@ export default function App() {
             <div className="flex items-center gap-1 sm:gap-2 relative z-20 min-w-[80px] justify-end">
               <div className="flex items-center bg-black/5 rounded-full p-1">
                 <button onPointerDown={(e) => { e.preventDefault(); setEntryType('diary'); }} className={`p-1.5 rounded-full transition-all ${entryType === 'diary' ? 'bg-white shadow-sm text-[#B28A5A]' : 'text-black/40 hover:text-black/70'}`}><Book size={16} /></button>
-                <button onPointerDown={(e) => { e.preventDefault(); setEntryType('reminder'); }} className={`p-1.5 rounded-full transition-all ${entryType === 'reminder' ? 'bg-white shadow-sm text-[#B28A5A]' : 'text-black/40 hover:text-black/70'}`}><Bell size={16} /></button>
+                {loginRole === 'main' && (
+                  <button onPointerDown={(e) => { e.preventDefault(); setEntryType('reminder'); }} className={`p-1.5 rounded-full transition-all ${entryType === 'reminder' ? 'bg-white shadow-sm text-[#B28A5A]' : 'text-black/40 hover:text-black/70'}`}><Bell size={16} /></button>
+                )}
               </div>
               <button onClick={() => setIsModalOpen(false)} className="p-1.5 rounded-full hover:bg-black/5 text-[#1A1A1A]/50 hover:text-[#1A1A1A] transition-colors -mr-1"><X size={20} /></button>
             </div>
@@ -1349,35 +1400,50 @@ export default function App() {
             
             {entryType !== 'note' && (
               <div className="flex flex-col gap-3 mb-4 bg-white/50 p-4 rounded-2xl border border-black/5 shadow-sm shrink-0">
-                 <div className="flex items-center justify-between">
-                    <span className="text-[13px] sm:text-[15px] font-bold text-[#B28A5A] uppercase tracking-wider">Start Time</span>
-                    <div className="flex items-center gap-1">
-                       <select value={entryHour} onChange={e => handleHourChange(e.target.value)} className="appearance-none bg-white px-3 py-2 sm:py-2.5 rounded-xl font-bold text-[18px] sm:text-[20px] border border-black/10 outline-none text-center min-w-[60px] shadow-sm text-[#1A1A1A]">
-                          {Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                       </select>
-                       <span className="font-bold text-[18px] sm:text-[20px] text-[#1A1A1A]">:</span>
-                       <select value={entryMinute} onChange={e => handleMinuteChange(e.target.value)} className="appearance-none bg-white px-3 py-2 sm:py-2.5 rounded-xl font-bold text-[18px] sm:text-[20px] border border-black/10 outline-none text-center min-w-[60px] shadow-sm text-[#1A1A1A]">
-                          {Array.from({length: 60}, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
-                       </select>
-                       <button type="button" onClick={handleAmPmChange} className="bg-[#B28A5A] text-white px-4 py-2 sm:py-2.5 rounded-xl font-bold text-[18px] sm:text-[20px] shadow-sm active:scale-95 transition-transform ml-2">{entryAmPm}</button>
-                    </div>
-                 </div>
-                 
-                 {entryType === 'diary' && (
-                   <div className="flex items-center justify-between mt-2 pt-3 border-t border-black/5">
-                      <span className="text-[13px] sm:text-[15px] font-bold text-[#B28A5A] uppercase tracking-wider">End Time</span>
-                      <div className="flex items-center gap-1">
-                         <select value={entryEndHour} onChange={e => setEntryEndHour(e.target.value)} className="appearance-none bg-white/60 px-3 py-2 rounded-xl font-bold text-[16px] sm:text-[18px] border border-black/10 outline-none text-center min-w-[60px] text-[#1A1A1A]">
-                            {Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                         </select>
-                         <span className="font-bold text-[16px] sm:text-[18px] text-[#1A1A1A]">:</span>
-                         <select value={entryEndMinute} onChange={e => setEntryEndMinute(e.target.value)} className="appearance-none bg-white/60 px-3 py-2 rounded-xl font-bold text-[16px] sm:text-[18px] border border-black/10 outline-none text-center min-w-[60px] text-[#1A1A1A]">
-                            {Array.from({length: 60}, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
-                         </select>
-                         <button type="button" onClick={() => setEntryEndAmPm(p => p === 'AM' ? 'PM' : 'AM')} className="bg-[#B28A5A]/10 text-[#B28A5A] px-4 py-2 rounded-xl font-bold text-[16px] sm:text-[18px] active:scale-95 transition-transform ml-2">{entryEndAmPm}</button>
-                      </div>
-                   </div>
-                 )}
+                {loginRole === 'sub' && entryType === 'diary' && !entryIsEvent ? (
+                  <div className="flex items-center justify-between">
+                     <span className="text-[13px] sm:text-[15px] font-bold text-[#B28A5A] uppercase tracking-wider">Time Slot</span>
+                     <select value={psTimeSlot} onChange={e => setPsTimeSlot(e.target.value)} className="appearance-none bg-white px-3 py-2 sm:py-2.5 rounded-xl font-bold text-[16px] sm:text-[18px] border border-black/10 outline-none text-[#1A1A1A] w-[220px]">
+                        <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
+                        <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</option>
+                        <option value="2:30 PM - 3:30 PM">2:30 PM - 3:30 PM</option>
+                        <option value="3:30 PM - 4:30 PM">3:30 PM - 4:30 PM</option>
+                        <option value="4:30 PM - 5:30 PM">4:30 PM - 5:30 PM</option>
+                     </select>
+                  </div>
+                ) : (
+                  <>
+                     <div className="flex items-center justify-between">
+                        <span className="text-[13px] sm:text-[15px] font-bold text-[#B28A5A] uppercase tracking-wider">Start Time</span>
+                        <div className="flex items-center gap-1">
+                           <select value={entryHour} onChange={e => handleHourChange(e.target.value)} className="appearance-none bg-white px-3 py-2 sm:py-2.5 rounded-xl font-bold text-[18px] sm:text-[20px] border border-black/10 outline-none text-center min-w-[60px] shadow-sm text-[#1A1A1A]">
+                              {Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                           </select>
+                           <span className="font-bold text-[18px] sm:text-[20px] text-[#1A1A1A]">:</span>
+                           <select value={entryMinute} onChange={e => handleMinuteChange(e.target.value)} className="appearance-none bg-white px-3 py-2 sm:py-2.5 rounded-xl font-bold text-[18px] sm:text-[20px] border border-black/10 outline-none text-center min-w-[60px] shadow-sm text-[#1A1A1A]">
+                              {Array.from({length: 60}, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                           </select>
+                           <button type="button" onClick={handleAmPmChange} className="bg-[#B28A5A] text-white px-4 py-2 sm:py-2.5 rounded-xl font-bold text-[18px] sm:text-[20px] shadow-sm active:scale-95 transition-transform ml-2">{entryAmPm}</button>
+                        </div>
+                     </div>
+                     
+                     {entryType === 'diary' && (
+                       <div className="flex items-center justify-between mt-2 pt-3 border-t border-black/5">
+                          <span className="text-[13px] sm:text-[15px] font-bold text-[#B28A5A] uppercase tracking-wider">End Time</span>
+                          <div className="flex items-center gap-1">
+                             <select value={entryEndHour} onChange={e => setEntryEndHour(e.target.value)} className="appearance-none bg-white/60 px-3 py-2 rounded-xl font-bold text-[16px] sm:text-[18px] border border-black/10 outline-none text-center min-w-[60px] text-[#1A1A1A]">
+                                {Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
+                             </select>
+                             <span className="font-bold text-[16px] sm:text-[18px] text-[#1A1A1A]">:</span>
+                             <select value={entryEndMinute} onChange={e => setEntryEndMinute(e.target.value)} className="appearance-none bg-white/60 px-3 py-2 rounded-xl font-bold text-[16px] sm:text-[18px] border border-black/10 outline-none text-center min-w-[60px] text-[#1A1A1A]">
+                                {Array.from({length: 60}, (_, i) => String(i).padStart(2, '0')).map(m => <option key={m} value={m}>{m}</option>)}
+                             </select>
+                             <button type="button" onClick={() => setEntryEndAmPm(p => p === 'AM' ? 'PM' : 'AM')} className="bg-[#B28A5A]/10 text-[#B28A5A] px-4 py-2 rounded-xl font-bold text-[16px] sm:text-[18px] active:scale-95 transition-transform ml-2">{entryEndAmPm}</button>
+                          </div>
+                       </div>
+                     )}
+                  </>
+                )}
               </div>
             )}
 
@@ -1403,11 +1469,17 @@ export default function App() {
           </div>
           
           <div className="p-4 sm:p-5 bg-[#EAE3D2]/80 backdrop-blur-md relative z-10 flex justify-between items-center border-t border-[#B28A5A]/20">
-            <div>
+            <div className="flex items-center gap-2">
               {loginRole === 'main' && entryType === 'diary' && (
                 <button onClick={() => setEntryPrivate(!entryPrivate)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-bold transition-colors shadow-sm ${entryPrivate ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-white/50 text-black/60 hover:bg-white border border-black/5'}`}>
                   {entryPrivate ? <Lock size={16} /> : <User size={16} />}
-                  {entryPrivate ? 'Private' : 'Visible to PS'}
+                  <span className="hidden sm:inline">{entryPrivate ? 'Private' : 'Visible to PS'}</span>
+                </button>
+              )}
+              {entryType === 'diary' && (
+                <button onClick={() => setEntryIsEvent(!entryIsEvent)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-bold transition-colors shadow-sm ${entryIsEvent ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-white/50 text-black/60 hover:bg-white border border-black/5'}`}>
+                  <CalendarIcon size={16} />
+                  <span className="hidden sm:inline">Event</span>
                 </button>
               )}
             </div>
@@ -1425,7 +1497,7 @@ export default function App() {
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] to-black opacity-90"/>
 
       <AnimatePresence>
-        {loginRole === 'main' && !activePanel && (
+        {(loginRole === 'main' || loginRole === 'sub') && !activePanel && (
           <motion.button 
             initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} 
             onClick={() => {
