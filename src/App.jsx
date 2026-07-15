@@ -174,7 +174,7 @@ export default function App() {
   const [reminderFrequency, setReminderFrequency] = useState("none");
   const [entryPrivate, setEntryPrivate] = useState(false);
   const [entryIsEvent, setEntryIsEvent] = useState(false);
-  const [psTimeSlot, setPsTimeSlot] = useState("10:00 AM - 11:00 AM");
+  const [psTimeSlot, setPsTimeSlot] = useState("10:00 AM - 11:30 AM");
 
   const [activeEntryMenu, setActiveEntryMenu] = useState(null);
   const [deleteSeriesModal, setDeleteSeriesModal] = useState(null); 
@@ -468,7 +468,7 @@ export default function App() {
       setEditingEntryId(entryToEdit.id);
       setEntryPrivate(entryToEdit.isPrivate || false);
       setEntryIsEvent(entryToEdit.isEvent || false);
-      setPsTimeSlot(entryToEdit.time || "10:00 AM - 11:00 AM");
+      setPsTimeSlot(entryToEdit.time || "10:00 AM - 11:30 AM");
     } else {
       setEntryDate(toLocalISODate(currentDate));
       const now = new Date();
@@ -484,7 +484,7 @@ export default function App() {
       setEditingEntryId(null);
       setEntryPrivate(false);
       setEntryIsEvent(false);
-      setPsTimeSlot("10:00 AM - 11:00 AM");
+      setPsTimeSlot("10:00 AM - 11:30 AM");
     }
     setIsModalOpen(true); setActiveEntryMenu(null); setActivePanel(null);
     setTimeout(() => entryTextRef.current?.focus(), 300);
@@ -1404,11 +1404,10 @@ export default function App() {
                   <div className="flex items-center justify-between">
                      <span className="text-[13px] sm:text-[15px] font-bold text-[#B28A5A] uppercase tracking-wider">Time Slot</span>
                      <select value={psTimeSlot} onChange={e => setPsTimeSlot(e.target.value)} className="appearance-none bg-white px-3 py-2 sm:py-2.5 rounded-xl font-bold text-[16px] sm:text-[18px] border border-black/10 outline-none text-[#1A1A1A] w-[220px]">
-                        <option value="10:00 AM - 11:00 AM">10:00 AM - 11:00 AM</option>
-                        <option value="11:00 AM - 12:00 PM">11:00 AM - 12:00 PM</option>
-                        <option value="2:30 PM - 3:30 PM">2:30 PM - 3:30 PM</option>
-                        <option value="3:30 PM - 4:30 PM">3:30 PM - 4:30 PM</option>
-                        <option value="4:30 PM - 5:30 PM">4:30 PM - 5:30 PM</option>
+                        <option value="10:00 AM - 11:30 AM">10:00 AM - 11:30 AM</option>
+                        <option value="11:30 AM - 1:00 PM">11:30 AM - 1:00 PM</option>
+                        <option value="3:30 PM - 5:00 PM">3:30 PM - 5:00 PM</option>
+                        <option value="5:00 PM - 6:00 PM">5:00 PM - 6:00 PM</option>
                      </select>
                   </div>
                 ) : (
