@@ -1562,13 +1562,17 @@ export default function App() {
                    top: Math.min(contextMenuPos.y, window.innerHeight - 100) 
                  }}
                >
-                  <button onClick={() => {
-                    setIsRenameOpen(true);
-                    setRenameValue(longPressedItem.type === 'folder' ? longPressedItem.name : (longPressedItem.title || ''));
-                  }} className="w-full text-left px-4 py-2 hover:bg-black/5 text-sm font-medium text-black flex items-center gap-2">
-                    <Edit2 size={14}/> Rename
-                  </button>
-                  <div className="h-px bg-black/5 w-full my-1"/>
+                  {longPressedItem?.type === 'folder' && (
+                    <>
+                      <button onClick={() => {
+                        setIsRenameOpen(true);
+                        setRenameValue(longPressedItem.name);
+                      }} className="w-full text-left px-4 py-2 hover:bg-black/5 text-sm font-medium text-black flex items-center gap-2">
+                        <Edit2 size={14}/> Rename
+                      </button>
+                      <div className="h-px bg-black/5 w-full my-1"/>
+                    </>
+                  )}
                   <button onClick={() => handleDelete(longPressedItem)} className="w-full text-left px-4 py-2 hover:bg-red-50 text-sm font-medium text-red-600 flex items-center gap-2">
                     <Trash2 size={14}/> Delete
                   </button>
