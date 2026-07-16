@@ -1459,11 +1459,13 @@ export default function App() {
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
                        {/* SVG Tabbed Folder exactly matching screenshot */}
-                       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.05))' }}>
-                          <path d="M0,20 C0,12 6,8 14,8 L40,8 C45,8 48,11 50,15 L55,20 L86,20 C94,20 100,26 100,34 L100,86 C100,94 94,100 86,100 L14,100 C6,100 0,94 0,86 Z" fill={bodyColors[colorIdx]} />
-                          <path d="M50,15 L55,20 L86,20 C94,20 100,26 100,34 L100,20 C100,12 94,8 86,8 L60,8 C55,8 52,11 50,15 Z" fill={tabColors[colorIdx]} />
+                       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.06))' }}>
+                          {/* Colored Tab (Placed behind white body) */}
+                          <path d="M50,28 C60,28 60,8 70,8 L88,8 Q100,8 100,20 L100,29 L50,29 Z" fill={tabColors[colorIdx]} />
+                          {/* White Body */}
+                          <path d="M0,40 Q0,28 12,28 L100,28 L100,88 Q100,100 88,100 L12,100 Q0,100 0,88 Z" fill={bodyColors[colorIdx]} />
                        </svg>
-                       <div className="absolute inset-0 p-3 pt-5 flex flex-col justify-between pointer-events-none">
+                       <div className="absolute inset-0 p-3 pt-8 flex flex-col justify-between pointer-events-none">
                           <span className="text-[10px] font-bold text-black/40 ml-1">{totalItems}</span>
                           <span className="font-bold text-black/80 leading-tight text-sm line-clamp-2 pb-1 ml-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
                        </div>
