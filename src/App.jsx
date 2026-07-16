@@ -1422,7 +1422,7 @@ export default function App() {
         </div>
 
         {/* FAB */}
-        <button onClick={handleAddNote} className="absolute right-6 bottom-6 w-14 h-14 bg-white border border-black/10 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.15)] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-30">
+        <button onClick={handleAddNote} className="absolute right-6 bottom-24 w-14 h-14 bg-white border border-black/10 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.15)] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-30">
           <Edit2 size={24} className="text-black" />
         </button>
 
