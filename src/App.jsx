@@ -1465,26 +1465,48 @@ export default function App() {
                        }}
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
-                       {/* Single Custom Vector Shape (SVG clip-path) perfectly satisfying the constraints */}
-                       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-                         <defs>
-                           <clipPath id={`folder-clip-${folder.id}`}>
-                             <path d="M 0 40 Q 0 25 15 25 L 45 25 C 52 25 54 5 65 5 L 85 5 Q 100 5 100 20 L 100 85 Q 100 100 85 100 L 15 100 Q 0 100 0 85 Z" />
-                           </clipPath>
-                         </defs>
+                       {/* 1. Colored Tab (Background layer) */}
+                       <div 
+                         className="absolute right-0 top-0 w-[45%]"
+                         style={{ 
+                           height: '40px', // Extends down behind the white body
+                           backgroundColor: tabColors[colorIdx],
+                           borderTopRightRadius: '16px',
+                           borderTopLeftRadius: '16px' // Convex curve
+                         }}
+                       >
+                         {/* Seamless Concave SVG Bridge */}
+                         {/* Connects the tab's convex corner to the white body's straight edge */}
+                         <svg 
+                           className="absolute pointer-events-none" 
+                           width="17" 
+                           height="17" 
+                           viewBox="0 0 17 17"
+                           style={{ left: '-16px', top: '16px' }} 
+                         >
+                           <path 
+                             d="M0,17 L17,17 L17,0 L16,0 A16,16 0 0,0 0,16 Z" 
+                             fill={tabColors[colorIdx]} 
+                           />
+                         </svg>
+                       </div>
 
-                         <g clipPath={`url(#folder-clip-${folder.id})`}>
-                           {/* Pure White Folder Body */}
-                           <rect width="100" height="100" fill="#ffffff" />
-                           {/* Seamless Colored Tab Area */}
-                           <rect x="45" y="0" width="55" height="25" fill={tabColors[colorIdx]} />
-                         </g>
-                       </svg>
-
-                       {/* Text Content Layout */}
-                       <div className="absolute inset-0 pt-[32px] pb-[12px] px-4 flex flex-col justify-between pointer-events-none">
-                         <span className="text-xs font-medium text-[#999999] tracking-wide ml-1">{totalItems}</span>
-                         <span className="text-[15px] font-semibold text-[#333333] leading-tight line-clamp-2 ml-1 pb-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
+                       {/* 2. Pure White Body (Foreground layer) */}
+                       <div 
+                         className="absolute bottom-0 left-0 w-full bg-white"
+                         style={{
+                           height: 'calc(100% - 32px)', // perfectly covers the bottom 8px of the tab and the 1px overlap of the bridge
+                           borderTopLeftRadius: '16px',
+                           borderBottomLeftRadius: '16px',
+                           borderBottomRightRadius: '16px',
+                           borderTopRightRadius: '0px'
+                         }}
+                       >
+                         {/* Text Content Layout */}
+                         <div className="absolute inset-0 pt-3 pb-3 px-4 flex flex-col justify-between pointer-events-none">
+                           <span className="text-xs font-medium text-[#999999] tracking-wide ml-1">{totalItems}</span>
+                           <span className="text-[15px] font-semibold text-[#333333] leading-tight line-clamp-2 ml-1 pb-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
+                         </div>
                        </div>
                      </div>
                    );
