@@ -1465,15 +1465,15 @@ export default function App() {
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
                        <svg width="100%" height="100%" viewBox="0 0 200 150" className="absolute inset-0" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.06))' }}>
-                         {/* Back Colored Tab (Right side, slanted right edge, placed lower) */}
+                         {/* Back Colored Tab (Right side, slanted right edge, placed lower, very rounded right corner) */}
                          <path 
-                           d="M 85 8 L 155 8 Q 162 8 167 13 L 178 24 Q 183 29 183 36 L 183 50 L 85 50 Z" 
+                           d="M 85 8 L 155 8 Q 170 8 181 19 L 186 24 Q 191 29 191 36 L 191 50 L 85 50 Z" 
                            fill={tabColors[colorIdx]} 
                          />
                        
-                         {/* Front White Folder (Left top tab, rounded diagonal separation, super smooth corners) */}
+                         {/* Front White Folder (Left top tab slightly narrower, rounded diagonal separation, super smooth corners) */}
                          <path 
-                           d="M 0 22 A 22 22 0 0 1 22 0 L 85 0 Q 92 0 97 5 L 115 23 Q 120 28 127 28 L 178 28 A 22 22 0 0 1 200 50 L 200 128 A 22 22 0 0 1 178 150 L 22 150 A 22 22 0 0 1 0 128 Z" 
+                           d="M 0 22 A 22 22 0 0 1 22 0 L 70 0 Q 77 0 82 5 L 100 23 Q 105 28 112 28 L 178 28 A 22 22 0 0 1 200 50 L 200 128 A 22 22 0 0 1 178 150 L 22 150 A 22 22 0 0 1 0 128 Z" 
                            fill="#ffffff" 
                          />
                        </svg>
