@@ -1377,7 +1377,7 @@ export default function App() {
         {/* Title Area */}
         {!isSearching && (
           <div className="px-6 py-2 flex flex-col items-center">
-             <h1 className="text-3xl font-bold text-black mb-1 tracking-tight truncate max-w-[80vw]" style={{ fontFamily: "'Noto Serif Malayalam', serif" }}>
+             <h1 className="text-3xl font-bold text-black mb-1 tracking-tight truncate max-w-[80vw]" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>
                {noteFolderPath.length === 0 ? 'Folders' : noteFolderPath[noteFolderPath.length - 1].name}
              </h1>
              <p className="text-black/50 text-xs font-medium">
@@ -1399,7 +1399,7 @@ export default function App() {
                {noteFolderPath.map((f, i) => (
                   <React.Fragment key={f.id}>
                     <ChevronRight size={14} className="text-black/30 shrink-0 mx-1" />
-                    <button onClick={() => handleNavigateUp(i)} className={`font-medium px-2 py-1 rounded-lg hover:bg-black/10 truncate max-w-[120px] text-[14px] active:scale-95 transition-transform ${i === noteFolderPath.length - 1 ? 'text-black font-bold' : 'text-black/60'}`} style={{ fontFamily: "'Noto Serif Malayalam', serif" }}>
+                    <button onClick={() => handleNavigateUp(i)} className={`font-medium px-2 py-1 rounded-lg hover:bg-black/10 truncate max-w-[120px] text-[14px] active:scale-95 transition-transform ${i === noteFolderPath.length - 1 ? 'text-black font-bold' : 'text-black/60'}`} style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>
                       {f.name}
                     </button>
                   </React.Fragment>
@@ -1421,6 +1421,7 @@ export default function App() {
                    const colorIdx = hash % 5;
                    // Tab colors mimicking the screenshot: yellow, blue, grey, red, etc.
                    const tabColors = ['#fbbc04', '#669df6', '#9e9e9e', '#f28b82', '#ccff90'];
+                   const bodyColors = ['#fdf3da', '#e8f0fe', '#f1f3f4', '#fce8e6', '#f4fce8'];
 
                    return (
                      <div key={folder.id} 
@@ -1446,12 +1447,12 @@ export default function App() {
                      >
                        {/* SVG Tabbed Folder exactly matching screenshot */}
                        <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.05))' }}>
-                          <path d="M0,20 C0,12 6,8 14,8 L40,8 C45,8 48,11 50,15 L55,20 L86,20 C94,20 100,26 100,34 L100,86 C100,94 94,100 86,100 L14,100 C6,100 0,94 0,86 Z" fill="#ffffff" />
+                          <path d="M0,20 C0,12 6,8 14,8 L40,8 C45,8 48,11 50,15 L55,20 L86,20 C94,20 100,26 100,34 L100,86 C100,94 94,100 86,100 L14,100 C6,100 0,94 0,86 Z" fill={bodyColors[colorIdx]} />
                           <path d="M50,15 L55,20 L86,20 C94,20 100,26 100,34 L100,20 C100,12 94,8 86,8 L60,8 C55,8 52,11 50,15 Z" fill={tabColors[colorIdx]} />
                        </svg>
                        <div className="absolute inset-0 p-3 pt-5 flex flex-col justify-between pointer-events-none">
                           <span className="text-[10px] font-bold text-black/40 ml-1">{totalItems}</span>
-                          <span className="font-bold text-black/80 leading-tight text-sm line-clamp-2 pb-1 ml-1" style={{ fontFamily: "'Noto Serif Malayalam', serif" }}>{folder.name}</span>
+                          <span className="font-bold text-black/80 leading-tight text-sm line-clamp-2 pb-1 ml-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
                        </div>
                      </div>
                    );
@@ -1486,8 +1487,8 @@ export default function App() {
                      }}
                      onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                    >
-                      <h3 className="font-bold text-black text-xs line-clamp-1 mb-1" style={{ fontFamily: "'Noto Serif Malayalam', serif" }}>{note.title || 'Untitled'}</h3>
-                      <p className="text-black/70 text-[10px] leading-relaxed line-clamp-4 overflow-hidden break-words" style={{ fontFamily: "'Noto Serif Malayalam', serif" }}>
+                      <h3 className="font-bold text-black text-xs line-clamp-1 mb-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{note.title || 'Untitled'}</h3>
+                      <p className="text-black/70 text-[10px] leading-relaxed line-clamp-4 overflow-hidden break-words" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>
                         {note.content}
                       </p>
                       <p className="text-[9px] text-black/30 absolute bottom-3 left-3">{(new Date(note.timestamp)).toLocaleDateString('en-GB', {day: 'numeric', month:'short'})}</p>
@@ -1621,8 +1622,8 @@ export default function App() {
 
     const renderLinks = (text) => {
       if (!text) return null;
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const phoneRegex = /(\+?\d{10,13})/g;
+      const urlRegex = /https?:\/\/[^\s]+/g;
+      const phoneRegex = /\+?\d{10,13}/g;
       const parts = text.split(new RegExp(`(${urlRegex.source}|${phoneRegex.source})`, 'gi')).filter(Boolean);
       return parts.map((part, i) => {
         if (part.match(urlRegex)) return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline" onClick={e=>e.stopPropagation()}>{part}</a>;
@@ -1665,10 +1666,10 @@ export default function App() {
                  onChange={e => setTitle(e.target.value)} 
                  placeholder="Heading" 
                  className="w-full outline-none text-3xl font-bold text-black mb-6 bg-transparent" 
-                 style={{ fontFamily: "'Noto Serif Malayalam', serif" }}
+                 style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}
                />
             ) : (
-               <h1 className="w-full text-3xl font-bold text-black mb-6" style={{ fontFamily: "'Noto Serif Malayalam', serif" }}>
+               <h1 className="w-full text-3xl font-bold text-black mb-6" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>
                  {title || 'Untitled'}
                </h1>
             )}
@@ -1680,13 +1681,12 @@ export default function App() {
                  onChange={e => setContent(e.target.value)}
                  placeholder="Type your note here..."
                  className="w-full flex-1 outline-none resize-none text-lg text-black/90 leading-relaxed bg-transparent"
-                 style={{ fontFamily: "'Noto Serif Malayalam', serif" }}
+                 style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}
                />
             ) : (
                <div 
                  className="w-full flex-1 text-lg text-black/90 leading-relaxed whitespace-pre-wrap"
-                 style={{ fontFamily: "'Noto Serif Malayalam', serif" }}
-                 onClick={() => setIsEditing(true)}
+                 style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}
                >
                  {content ? renderLinks(content) : <span className="text-black/30">Tap to edit...</span>}
                </div>
