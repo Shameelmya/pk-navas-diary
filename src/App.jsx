@@ -1224,10 +1224,22 @@ export default function App() {
     const allNotesAndFolders = allData.filter(e => (e.type === 'note' || e.type === 'folder'));
     
     // Hash routing for back button
+    const pathRef = useRef([]);
+    useEffect(() => { pathRef.current = noteFolderPath; }, [noteFolderPath]);
+
     useEffect(() => {
       const handlePopState = () => {
         if (window.location.hash !== '#notes') {
-          setActivePanel(p => p === 'note' ? null : p);
+          if (pathRef.current.length > 0) {
+            // We are inside a folder, intercept back button to go up!
+            window.history.pushState(null, '', '#notes');
+            const newPath = [...pathRef.current];
+            newPath.pop();
+            setNoteFolderPath(newPath);
+            setCurrentNoteFolderId(newPath.length > 0 ? newPath[newPath.length - 1].id : null);
+          } else {
+            setActivePanel(p => p === 'note' ? null : p);
+          }
         }
       };
       window.addEventListener('popstate', handlePopState);
@@ -1314,6 +1326,7 @@ export default function App() {
     };
 
     const closeNotePanel = () => {
+      pathRef.current = []; // forcefully clear it so popstate doesn't intercept
       window.history.back(); // This will pop '#notes' and trigger popstate
     };
     
@@ -1416,12 +1429,12 @@ export default function App() {
                 {folders.map(folder => {
                    const { nCount, fCount } = getFolderCounts(folder.id);
                    const totalItems = nCount + fCount;
-                   // Stable random color
-                   const hash = folder.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-                   const colorIdx = hash % 5;
-                   // Tab colors mimicking the screenshot: yellow, blue, grey, red, etc.
-                   const tabColors = ['#fbbc04', '#669df6', '#9e9e9e', '#f28b82', '#ccff90'];
-                   const bodyColors = ['#fdf3da', '#e8f0fe', '#f1f3f4', '#fce8e6', '#f4fce8'];
+                   // Stable random color based on name so they are distinct
+                   const hash = folder.name.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+                   const colorIdx = hash % 7;
+                   // Tab colors mimicking the screenshot: yellow, blue, purple, red, teal, orange, brown
+                   const tabColors = ['#fbbc04', '#669df6', '#ab47bc', '#f28b82', '#26a69a', '#ffa726', '#8d6e63'];
+                   const bodyColors = ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'];
 
                    return (
                      <div key={folder.id} 
