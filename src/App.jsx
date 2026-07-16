@@ -1431,10 +1431,10 @@ export default function App() {
                    const totalItems = nCount + fCount;
                    // Stable random color based on name so they are distinct
                    const hash = folder.name.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-                   const colorIdx = hash % 7;
-                   // Tab colors mimicking the screenshot: yellow, blue, purple, red, teal, orange, brown
-                   const tabColors = ['#fbbc04', '#669df6', '#ab47bc', '#f28b82', '#26a69a', '#ffa726', '#8d6e63'];
-                   const bodyColors = ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'];
+                   const colorIdx = hash % 6;
+                   // Exact Samsung Notes folder color palette
+                   const tabColors = ['#F3B200', '#91AAEE', '#CCCCCC', '#FF8080', '#B866D3', '#46BDB5'];
+                   const bodyColors = ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'];
 
                    return (
                      <div key={folder.id} 
@@ -1459,15 +1459,15 @@ export default function App() {
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
                        {/* SVG Tabbed Folder exactly matching screenshot */}
-                       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.06))' }}>
+                       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.06))' }}>
                           {/* Colored Tab (Placed behind white body) */}
-                          <path d="M50,28 C60,28 60,8 70,8 L88,8 Q100,8 100,20 L100,29 L50,29 Z" fill={tabColors[colorIdx]} />
+                          <path d="M40,25 C52,25 54,5 65,5 L85,5 Q100,5 100,20 L100,26 L40,26 Z" fill={tabColors[colorIdx]} />
                           {/* White Body */}
-                          <path d="M0,40 Q0,28 12,28 L100,28 L100,88 Q100,100 88,100 L12,100 Q0,100 0,88 Z" fill={bodyColors[colorIdx]} />
+                          <path d="M0,40 Q0,25 15,25 L100,25 L100,85 Q100,100 85,100 L15,100 Q0,100 0,85 Z" fill={bodyColors[colorIdx]} />
                        </svg>
-                       <div className="absolute inset-0 p-3 pt-8 flex flex-col justify-between pointer-events-none">
-                          <span className="text-[10px] font-bold text-black/40 ml-1">{totalItems}</span>
-                          <span className="font-bold text-black/80 leading-tight text-sm line-clamp-2 pb-1 ml-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
+                       <div className="absolute inset-0 p-3 pt-[30%] flex flex-col justify-between pointer-events-none">
+                          <span className="text-sm font-medium text-[#A0A0A0] ml-1 tracking-wide">{totalItems}</span>
+                          <span className="text-[15px] font-semibold text-[#202020] leading-tight line-clamp-2 pb-1 ml-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
                        </div>
                      </div>
                    );
