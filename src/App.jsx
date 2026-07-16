@@ -1444,8 +1444,7 @@ export default function App() {
 
                    return (
                      <div key={folder.id} 
-                       className="relative select-none cursor-pointer active:scale-95 transition-transform group bg-transparent h-[110px]"
-                       style={{ filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.04))' }}
+                       className="relative select-none cursor-pointer active:scale-95 transition-transform group bg-transparent w-full aspect-[202/162]"
                        onContextMenu={(e) => {
                          e.preventDefault();
                          setLongPressedItem(folder);
@@ -1465,48 +1464,26 @@ export default function App() {
                        }}
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
-                       {/* 1. Colored Tab (Background layer) */}
-                       <div 
-                         className="absolute right-0 top-0 w-[45%]"
-                         style={{ 
-                           height: '40px', // Extends down behind the white body
-                           backgroundColor: tabColors[colorIdx],
-                           borderTopRightRadius: '16px',
-                           borderTopLeftRadius: '16px' // Convex curve
-                         }}
-                       >
-                         {/* Seamless Concave SVG Bridge */}
-                         {/* Connects the tab's convex corner to the white body's straight edge */}
-                         <svg 
-                           className="absolute pointer-events-none" 
-                           width="17" 
-                           height="17" 
-                           viewBox="0 0 17 17"
-                           style={{ left: '-16px', top: '16px' }} 
-                         >
-                           <path 
-                             d="M0,17 L17,17 L17,0 L16,0 A16,16 0 0,0 0,16 Z" 
-                             fill={tabColors[colorIdx]} 
-                           />
-                         </svg>
-                       </div>
+                       {/* SVG folder rendering exact blueprint dimensions 202x162 */}
+                       <svg width="100%" height="100%" viewBox="0 0 202 162" className="absolute inset-0" style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.06))' }}>
+                         <defs>
+                           {/* Exact mathematical silhouette of the Samsung Notes folder */}
+                           <clipPath id={`folder-clip-${folder.id}`}>
+                             <path d="M 0 32 A 20 20 0 0 1 20 12 L 46 12 L 78 0 L 190 0 A 12 12 0 0 1 202 12 L 202 142 A 20 20 0 0 1 182 162 L 20 162 A 20 20 0 0 1 0 142 Z" />
+                           </clipPath>
+                         </defs>
+                         <g clipPath={`url(#folder-clip-${folder.id})`}>
+                           {/* White Base Body */}
+                           <rect width="202" height="162" fill="#ffffff" />
+                           {/* Colored Tab Area - Overpaints the exact top-right area matching the tab silhouette */}
+                           <rect x="46" y="0" width="156" height="12" fill={tabColors[colorIdx]} />
+                         </g>
+                       </svg>
 
-                       {/* 2. Pure White Body (Foreground layer) */}
-                       <div 
-                         className="absolute bottom-0 left-0 w-full bg-white"
-                         style={{
-                           height: 'calc(100% - 32px)', // perfectly covers the bottom 8px of the tab and the 1px overlap of the bridge
-                           borderTopLeftRadius: '16px',
-                           borderBottomLeftRadius: '16px',
-                           borderBottomRightRadius: '16px',
-                           borderTopRightRadius: '0px'
-                         }}
-                       >
-                         {/* Text Content Layout */}
-                         <div className="absolute inset-0 pt-3 pb-3 px-4 flex flex-col justify-between pointer-events-none">
-                           <span className="text-xs font-medium text-[#999999] tracking-wide ml-1">{totalItems}</span>
-                           <span className="text-[15px] font-semibold text-[#333333] leading-tight line-clamp-2 ml-1 pb-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
-                         </div>
+                       {/* Exact Blueprint Text Placement */}
+                       <div className="absolute inset-0 p-[12%] pt-[14%] flex flex-col justify-between pointer-events-none">
+                         <span className="text-[1.3rem] font-medium text-[#B0B0B0] tracking-tight">{totalItems}</span>
+                         <span className="text-[1.3rem] font-semibold text-[#202020] leading-snug line-clamp-2" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
                        </div>
                      </div>
                    );
