@@ -1467,13 +1467,13 @@ export default function App() {
                        <svg width="100%" height="100%" viewBox="0 0 200 150" className="absolute inset-0" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.06))' }}>
                          {/* Back Colored Tab (Placed down and right, partially hidden by front folder) */}
                          <path 
-                           d="M 100 12 L 180 12 A 10 10 0 0 1 190 22 L 190 50 L 100 50 Z" 
+                           d="M 100 8 L 180 8 A 10 10 0 0 1 190 18 L 190 50 L 100 50 Z" 
                            fill={tabColors[colorIdx]} 
                          />
                        
                          {/* Front White Folder (Left top tab, diagonal separation on the right) */}
                          <path 
-                           d="M 0 15 A 15 15 0 0 1 15 0 L 110 0 L 135 30 L 185 30 A 15 15 0 0 1 200 45 L 200 135 A 15 15 0 0 1 185 150 L 15 150 A 15 15 0 0 1 0 135 Z" 
+                           d="M 0 15 A 15 15 0 0 1 15 0 L 95 0 L 125 30 L 185 30 A 15 15 0 0 1 200 45 L 200 135 A 15 15 0 0 1 185 150 L 15 150 A 15 15 0 0 1 0 135 Z" 
                            fill="#ffffff" 
                          />
                        </svg>
