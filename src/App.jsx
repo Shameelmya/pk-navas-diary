@@ -1433,7 +1433,7 @@ export default function App() {
                    const hash = folder.name.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
                    const colorIdx = hash % 6;
                    // Exact Samsung Notes folder color palette
-                   const tabColors = ['#F3B200', '#91AAEE', '#CCCCCC', '#FF8080', '#B866D3', '#46BDB5'];
+                   const tabColors = ['#FFB300', '#8CA3F8', '#C7C7C7', '#FF8080', '#B868D8', '#48BDB8'];
                    const bodyColors = ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'];
 
                    return (
@@ -1459,15 +1459,15 @@ export default function App() {
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
                        {/* SVG Tabbed Folder exactly matching screenshot */}
-                       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.06))' }}>
+                       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.05))' }}>
                           {/* Colored Tab (Placed behind white body) */}
-                          <path d="M40,25 C52,25 54,5 65,5 L85,5 Q100,5 100,20 L100,26 L40,26 Z" fill={tabColors[colorIdx]} />
+                          <path d="M45,26 C52,26 53,6 60,6 L80,6 Q100,6 100,26 L100,35 L45,35 Z" fill={tabColors[colorIdx]} />
                           {/* White Body */}
-                          <path d="M0,40 Q0,25 15,25 L100,25 L100,85 Q100,100 85,100 L15,100 Q0,100 0,85 Z" fill={bodyColors[colorIdx]} />
+                          <path d="M0,46 Q0,26 20,26 L100,26 L100,80 Q100,100 80,100 L20,100 Q0,100 0,80 Z" fill={bodyColors[colorIdx]} />
                        </svg>
-                       <div className="absolute inset-0 p-3 pt-[30%] flex flex-col justify-between pointer-events-none">
-                          <span className="text-sm font-medium text-[#A0A0A0] ml-1 tracking-wide">{totalItems}</span>
-                          <span className="text-[15px] font-semibold text-[#202020] leading-tight line-clamp-2 pb-1 ml-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
+                       <div className="absolute inset-0 pt-9 pb-3 px-4 flex flex-col justify-between pointer-events-none">
+                          <span className="text-[13px] font-semibold text-black/40 tracking-wide">{totalItems}</span>
+                          <span className="text-[15px] font-bold text-[#333333] leading-tight line-clamp-2" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
                        </div>
                      </div>
                    );
