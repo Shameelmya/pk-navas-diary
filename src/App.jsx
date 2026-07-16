@@ -953,7 +953,7 @@ export default function App() {
         <div className="relative z-10 w-full flex justify-between items-center text-[#3A2E25]/80" onPointerDown={(e) => e.stopPropagation()}>
           <button onClick={() => setShowLogoutConfirm(true)} className="p-3 text-red-600 hover:text-red-800 transition-colors" title="Log Out"><LogOut size={22} /></button>
           <button onClick={() => setActivePanel(p => p === 'settings' ? null : 'settings')} className={`p-3 transition-colors ${activePanel === 'settings' ? 'text-[#B28A5A]' : 'hover:text-[#3A2E25]'}`} title="Settings"><Settings size={22} /></button>
-          {userRole !== 'ps2' && (
+          {loginRole !== 'sub2' && (
             <button onClick={() => setActivePanel(p => p === 'reading' ? null : 'reading')} className={`p-3 transition-colors ${activePanel === 'reading' ? 'text-[#B28A5A]' : 'hover:text-[#3A2E25]'}`} title="Reading Targets"><BookOpen size={22} /></button>
           )}
           <button onClick={() => setActivePanel(p => p === 'todo' ? null : 'todo')} className={`p-3 transition-colors ${activePanel === 'todo' ? 'text-[#B28A5A]' : 'hover:text-[#3A2E25]'}`} title="To-Do List"><ListTodo size={22} /></button>
