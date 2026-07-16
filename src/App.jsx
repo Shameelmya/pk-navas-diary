@@ -1218,6 +1218,7 @@ export default function App() {
     const [longPressedItem, setLongPressedItem] = useState(null);
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const [renameValue, setRenameValue] = useState("");
+    const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
     const [activeNote, setActiveNote] = useState(null);
 
     const allNotesAndFolders = allData.filter(e => (e.type === 'note' || e.type === 'folder'));
@@ -1270,11 +1271,16 @@ export default function App() {
       setContextMenuPos(null);
     };
 
-    const handleDelete = async (item) => {
-      if (window.confirm(`Are you sure you want to delete this ${item.type}?`)) {
-        await deleteRecursive(item.id, item.type);
+    const handleDelete = (item) => {
+      setDeleteConfirmItem(item);
+    };
+
+    const confirmDelete = async () => {
+      if (deleteConfirmItem) {
+        await deleteRecursive(deleteConfirmItem.id, deleteConfirmItem.type);
         setLongPressedItem(null);
         setContextMenuPos(null);
+        setDeleteConfirmItem(null);
       }
     };
 
@@ -1561,6 +1567,22 @@ export default function App() {
                    <button onClick={handleRename} className="px-5 py-2.5 rounded-xl font-bold text-white bg-black hover:bg-black/80">Save</button>
                  </div>
                </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Delete Confirm Modal */}
+        <AnimatePresence>
+          {deleteConfirmItem && (
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 bg-black/40 z-[120] flex items-center justify-center p-6" onClick={() => setDeleteConfirmItem(null)}>
+               <motion.div initial={{scale:0.95}} animate={{scale:1}} exit={{scale:0.95}} className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl" onClick={e=>e.stopPropagation()}>
+                 <h2 className="text-xl font-bold text-black mb-2">Delete {deleteConfirmItem.type === 'folder' ? 'Folder' : 'Note'}?</h2>
+                 <p className="text-black/60 mb-6 font-medium">Are you sure you want to delete this {deleteConfirmItem.type}? This action cannot be undone.</p>
+                 <div className="flex justify-end gap-2">
+                   <button onClick={() => setDeleteConfirmItem(null)} className="px-5 py-2.5 rounded-xl font-bold text-black/60 hover:bg-black/5">Cancel</button>
+                   <button onClick={confirmDelete} className="px-5 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700">Delete</button>
+                 </div>
+               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
