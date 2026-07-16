@@ -1444,7 +1444,7 @@ export default function App() {
 
                    return (
                      <div key={folder.id} 
-                       className="relative select-none cursor-pointer active:scale-95 transition-transform group bg-transparent w-full aspect-[202/162]"
+                       className="relative select-none cursor-pointer active:scale-95 transition-transform group bg-transparent w-full aspect-[4/3]"
                        onContextMenu={(e) => {
                          e.preventDefault();
                          setLongPressedItem(folder);
@@ -1464,26 +1464,23 @@ export default function App() {
                        }}
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
-                       {/* SVG folder rendering exact blueprint dimensions 202x162 */}
-                       <svg width="100%" height="100%" viewBox="0 0 202 162" className="absolute inset-0" style={{ filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.06))' }}>
-                         <defs>
-                           {/* Exact mathematical silhouette of the Samsung Notes folder */}
-                           <clipPath id={`folder-clip-${folder.id}`}>
-                             <path d="M 0 32 A 20 20 0 0 1 20 12 L 46 12 L 78 0 L 190 0 A 12 12 0 0 1 202 12 L 202 142 A 20 20 0 0 1 182 162 L 20 162 A 20 20 0 0 1 0 142 Z" />
-                           </clipPath>
-                         </defs>
-                         <g clipPath={`url(#folder-clip-${folder.id})`}>
-                           {/* White Base Body */}
-                           <rect width="202" height="162" fill="#ffffff" />
-                           {/* Colored Tab Area - Overpaints the exact top-right area matching the tab silhouette */}
-                           <rect x="46" y="0" width="156" height="12" fill={tabColors[colorIdx]} />
-                         </g>
+                       <svg width="100%" height="100%" viewBox="0 0 200 150" className="absolute inset-0" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.06))' }}>
+                         {/* Back Colored Tab (Placed down and right, partially hidden by front folder) */}
+                         <path 
+                           d="M 100 12 L 180 12 A 10 10 0 0 1 190 22 L 190 50 L 100 50 Z" 
+                           fill={tabColors[colorIdx]} 
+                         />
+                       
+                         {/* Front White Folder (Left top tab, diagonal separation on the right) */}
+                         <path 
+                           d="M 0 15 A 15 15 0 0 1 15 0 L 110 0 L 135 30 L 185 30 A 15 15 0 0 1 200 45 L 200 135 A 15 15 0 0 1 185 150 L 15 150 A 15 15 0 0 1 0 135 Z" 
+                           fill="#ffffff" 
+                         />
                        </svg>
 
-                       {/* Exact Blueprint Text Placement */}
-                       <div className="absolute inset-0 p-[12%] pt-[14%] flex flex-col justify-between pointer-events-none">
-                         <span className="text-[1.3rem] font-medium text-[#B0B0B0] tracking-tight">{totalItems}</span>
-                         <span className="text-[1.3rem] font-semibold text-[#202020] leading-snug line-clamp-2" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
+                       <div className="absolute inset-0 p-[10%] pt-[20%] flex flex-col justify-between pointer-events-none">
+                         <span className="text-xl md:text-2xl font-medium text-[#A0A0A0] tracking-tight">{totalItems}</span>
+                         <span className="text-lg md:text-xl font-semibold text-[#202020] leading-snug line-clamp-2" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
                        </div>
                      </div>
                    );
