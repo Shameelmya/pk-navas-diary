@@ -1487,9 +1487,9 @@ export default function App() {
                          />
                        </svg>
 
-                       <div className="absolute inset-0 px-5 pb-4 pt-4 flex flex-col justify-between pointer-events-none">
-                         <span className="text-[17px] font-medium text-[#A0A0A0] tracking-tight">{totalItems}</span>
-                         <span className="text-[14px] font-semibold text-[#333333] leading-snug line-clamp-2 break-words" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
+                       <div className="absolute inset-0 px-4 pb-3 pt-3 md:px-5 md:pb-4 md:pt-4 flex flex-col justify-between pointer-events-none">
+                         <span className="text-[15px] md:text-[17px] font-medium text-[#A0A0A0] tracking-tight shrink-0">{totalItems}</span>
+                         <span className="text-[13px] font-semibold md:font-medium text-[#333333] leading-snug line-clamp-2 break-words shrink-0" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
                        </div>
                      </div>
                    );
