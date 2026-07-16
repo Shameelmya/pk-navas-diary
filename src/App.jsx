@@ -1431,15 +1431,18 @@ export default function App() {
                    const totalItems = nCount + fCount;
                    // Stable random color based on name so they are distinct
                    const hash = folder.name.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-                   const colorIdx = hash % 6;
-                   // Exact Samsung Notes pastel folder color palette
+                   const colorIdx = hash % 9;
+                   // Expanded soft color palette
                    const tabColors = [
-                     '#F7DC6F', // Soft Yellow
-                     '#AED6F1', // Soft Sky Blue
-                     '#A9DFBF', // Soft Mint
-                     '#D7BDE2', // Soft Lavender
-                     '#F1948A', // Soft Coral
-                     '#E5E7E9'  // Soft Gray
+                     '#F7DC6F', // soft yellow
+                     '#AED6F1', // soft sky blue
+                     '#A9DFBF', // soft mint
+                     '#D7BDE2', // soft lavender
+                     '#F1948A', // soft coral
+                     '#F5CBA7', // soft peach
+                     '#A2D9CE', // soft teal
+                     '#D2B4DE', // soft purple
+                     '#E5E7E9'  // soft gray
                    ];
 
                    return (
@@ -1465,9 +1468,9 @@ export default function App() {
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
                        <svg width="100%" height="100%" viewBox="0 0 200 150" className="absolute inset-0" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.06))' }}>
-                         {/* Back Colored Tab (Shifted left, reduced top-right curveness) */}
+                         {/* Back Colored Tab (Shifted back right) */}
                          <path 
-                           d="M 85 8 L 145 8 Q 155 8 162 15 L 171 24 Q 176 29 176 36 L 176 50 L 85 50 Z" 
+                           d="M 85 8 L 155 8 Q 165 8 172 15 L 181 24 Q 186 29 186 36 L 186 50 L 85 50 Z" 
                            fill={tabColors[colorIdx]} 
                          />
                        
