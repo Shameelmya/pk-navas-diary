@@ -1465,45 +1465,26 @@ export default function App() {
                        }}
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
-                       {/* Colored Tab */}
-                       <div 
-                         className="absolute right-0 top-0 w-[45%]"
-                         style={{ 
-                           height: '40px',
-                           backgroundColor: tabColors[colorIdx],
-                           borderTopRightRadius: '16px',
-                           borderTopLeftRadius: '12px'
-                         }}
-                       >
-                         {/* Concave Bridge for seamless S-curve transition */}
-                         <div 
-                           className="absolute"
-                           style={{
-                             left: '-12px',
-                             top: '12px',
-                             width: '12px',
-                             height: '12px',
-                             background: `radial-gradient(circle at 0 0, transparent 12px, ${tabColors[colorIdx]} 12.5px)`
-                           }}
-                         />
-                       </div>
+                       {/* Single Custom Vector Shape (SVG clip-path) perfectly satisfying the constraints */}
+                       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+                         <defs>
+                           <clipPath id={`folder-clip-${folder.id}`}>
+                             <path d="M 0 40 Q 0 25 15 25 L 45 25 C 52 25 54 5 65 5 L 85 5 Q 100 5 100 20 L 100 85 Q 100 100 85 100 L 15 100 Q 0 100 0 85 Z" />
+                           </clipPath>
+                         </defs>
 
-                       {/* White Body */}
-                       <div 
-                         className="absolute bottom-0 left-0 w-full bg-white"
-                         style={{
-                           height: 'calc(100% - 24px)',
-                           borderTopLeftRadius: '16px',
-                           borderBottomLeftRadius: '16px',
-                           borderBottomRightRadius: '16px',
-                           borderTopRightRadius: '0px'
-                         }}
-                       >
-                         {/* Text Content */}
-                         <div className="absolute inset-0 p-4 pt-3 flex flex-col justify-between pointer-events-none">
-                           <span className="text-xs font-normal text-[#999999] tracking-wide ml-1">{totalItems}</span>
-                           <span className="text-[15px] font-medium text-[#333333] leading-snug line-clamp-2 ml-1 pb-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
-                         </div>
+                         <g clipPath={`url(#folder-clip-${folder.id})`}>
+                           {/* Pure White Folder Body */}
+                           <rect width="100" height="100" fill="#ffffff" />
+                           {/* Seamless Colored Tab Area */}
+                           <rect x="45" y="0" width="55" height="25" fill={tabColors[colorIdx]} />
+                         </g>
+                       </svg>
+
+                       {/* Text Content Layout */}
+                       <div className="absolute inset-0 pt-[32px] pb-[12px] px-4 flex flex-col justify-between pointer-events-none">
+                         <span className="text-xs font-medium text-[#999999] tracking-wide ml-1">{totalItems}</span>
+                         <span className="text-[15px] font-semibold text-[#333333] leading-tight line-clamp-2 ml-1 pb-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
                        </div>
                      </div>
                    );
