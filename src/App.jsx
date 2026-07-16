@@ -1465,20 +1465,20 @@ export default function App() {
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
                        <svg width="100%" height="100%" viewBox="0 0 200 150" className="absolute inset-0" style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.06))' }}>
-                         {/* Back Colored Tab (Right side, slanted right edge, placed lower, very rounded right corner) */}
+                         {/* Back Colored Tab (Shifted left, reduced top-right curveness) */}
                          <path 
-                           d="M 85 8 L 155 8 Q 170 8 181 19 L 186 24 Q 191 29 191 36 L 191 50 L 85 50 Z" 
+                           d="M 85 8 L 145 8 Q 155 8 162 15 L 171 24 Q 176 29 176 36 L 176 50 L 85 50 Z" 
                            fill={tabColors[colorIdx]} 
                          />
                        
-                         {/* Front White Folder (Left top tab slightly narrower, rounded diagonal separation, super smooth corners) */}
+                         {/* Front White Folder */}
                          <path 
                            d="M 0 22 A 22 22 0 0 1 22 0 L 70 0 Q 77 0 82 5 L 100 23 Q 105 28 112 28 L 178 28 A 22 22 0 0 1 200 50 L 200 128 A 22 22 0 0 1 178 150 L 22 150 A 22 22 0 0 1 0 128 Z" 
                            fill="#ffffff" 
                          />
                        </svg>
 
-                       <div className="absolute inset-0 px-5 pb-4 pt-[24px] flex flex-col justify-between pointer-events-none">
+                       <div className="absolute inset-0 px-5 pb-4 pt-4 flex flex-col justify-between pointer-events-none">
                          <span className="text-[17px] font-medium text-[#A0A0A0] tracking-tight">{totalItems}</span>
                          <span className="text-[15px] font-semibold text-[#333333] leading-snug line-clamp-2" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
                        </div>
@@ -1493,7 +1493,7 @@ export default function App() {
              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
                 {notes.map(note => (
                    <div key={note.id} 
-                     className="bg-white rounded-[20px] p-3 shadow-[0_2px_8px_rgba(0,0,0,0.04)] aspect-square relative select-none cursor-pointer active:scale-95 transition-transform flex flex-col border border-black/5"
+                     className="bg-white rounded-[20px] p-3 pb-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] aspect-[4/4.5] relative select-none cursor-pointer active:scale-95 transition-transform flex flex-col border border-black/5"
                      onContextMenu={(e) => {
                        e.preventDefault();
                        setLongPressedItem(note);
