@@ -729,8 +729,8 @@ export default function App() {
             className={`text-[20px] leading-[32px] whitespace-pre-wrap break-words m-0 flex-1 transition-all duration-300 ${entry.completed ? 'line-through opacity-40 grayscale' : ''}`}
             style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", color: COLORS.ink, fontWeight: 600 }}
           >
-            <span className="tracking-wider inline whitespace-nowrap" style={{ color: COLORS.redInk, fontSize: '20px', fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 'bold' }}>
-              {entry.time}&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;
+            <span className="tracking-normal inline whitespace-nowrap" style={{ color: COLORS.redInk, fontSize: '17px', fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 'bold' }}>
+              {entry.time}&nbsp;-&nbsp;
             </span>
             {entry.content}
             {entry.type === 'reminder' && entry.frequency !== 'none' && (
