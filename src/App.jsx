@@ -1225,12 +1225,18 @@ export default function App() {
     
     // Hash routing for back button
     const pathRef = useRef([]);
+    const activeNoteRef = useRef(null);
     useEffect(() => { pathRef.current = noteFolderPath; }, [noteFolderPath]);
+    useEffect(() => { activeNoteRef.current = activeNote; }, [activeNote]);
 
     useEffect(() => {
       const handlePopState = () => {
         if (window.location.hash !== '#notes') {
-          if (pathRef.current.length > 0) {
+          if (activeNoteRef.current) {
+            // We are inside a note editor, intercept back button to close it!
+            window.history.pushState(null, '', '#notes');
+            window.dispatchEvent(new Event('app-back-button'));
+          } else if (pathRef.current.length > 0) {
             // We are inside a folder, intercept back button to go up!
             window.history.pushState(null, '', '#notes');
             const newPath = [...pathRef.current];
@@ -1483,7 +1489,7 @@ export default function App() {
 
                        <div className="absolute inset-0 px-5 pb-4 pt-4 flex flex-col justify-between pointer-events-none">
                          <span className="text-[17px] font-medium text-[#A0A0A0] tracking-tight">{totalItems}</span>
-                         <span className="text-[15px] font-semibold text-[#333333] leading-snug line-clamp-2" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
+                         <span className="text-[14px] font-semibold text-[#333333] leading-snug line-clamp-2 break-words" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
                        </div>
                      </div>
                    );
@@ -1639,6 +1645,12 @@ export default function App() {
       }
       onClose();
     };
+
+    useEffect(() => {
+      const onAppBack = () => handleBack();
+      window.addEventListener('app-back-button', onAppBack);
+      return () => window.removeEventListener('app-back-button', onAppBack);
+    }, [isEditing, title, content, note]);
 
     const addBullet = () => {
        if (!textAreaRef.current) return;
