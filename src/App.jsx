@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Plus, Calendar as CalendarIcon, X, Check, Bell, Book, Phone, 
-  Edit2, Trash2, CheckCircle, Clock, Crown, User, Users, Lock, BookOpen, 
+  Plus, Edit2, Check, ArrowRight, RotateCcw, 
+  MapPin, Clock, Calendar, CheckCircle2, Circle, 
+  BookOpen, Eye, EyeOff, Layout, List, MoreHorizontal,
   Target, Settings, Download, Upload, Trash, LogOut, 
   StickyNote, Ban, Search, AlertCircle, ListTodo, CalendarCheck,
-  History, Menu, FolderPlus, Folder, MoreVertical, Home, ChevronRight, FileText
+  History, Menu, FolderPlus, Folder, MoreVertical, Home, ChevronRight, FileText, X
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
@@ -1303,7 +1304,7 @@ export default function App() {
     // Global Search vs Local items
     const isSearching = search.trim().length > 0;
     const currentItems = isSearching 
-      ? allNotesAndFolders.filter(i => (i.name || i.content || i.title || i.phone || '').toLowerCase().includes(search.toLowerCase()))
+      ? allNotesAndFolders.filter(i => [i.name, i.title, i.content, i.phone].join(' ').toLowerCase().includes(search.toLowerCase()))
       : allNotesAndFolders.filter(e => (e.parentId || null) === currentNoteFolderId).sort((a,b) => b.timestamp - a.timestamp);
 
     const folders = currentItems.filter(i => i.type === 'folder');
@@ -1359,7 +1360,7 @@ export default function App() {
         {/* Header / Toolbar */}
         <div className="pt-6 pb-2 px-4 flex justify-between items-center bg-[#F4F4F4] sticky top-0 z-20">
            <button onClick={closeNotePanel} className="p-2 -ml-2 rounded-full hover:bg-black/5 active:scale-95 transition-transform">
-             <Menu size={24} className="text-black/80" />
+             <X size={24} className="text-black/80" />
            </button>
            <div className="flex-1 px-4 max-w-[200px]">
              <div className="relative">
