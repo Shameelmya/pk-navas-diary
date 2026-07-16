@@ -5,7 +5,7 @@ import {
   Edit2, Trash2, CheckCircle, Clock, Crown, User, Users, Lock, BookOpen, 
   Target, Settings, Download, Upload, Trash, LogOut, 
   StickyNote, Ban, Search, AlertCircle, ListTodo, CalendarCheck,
-  History
+  History, Menu, FolderPlus, Folder, MoreVertical, Home, ChevronRight, FileText
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
@@ -179,6 +179,8 @@ export default function App() {
   const [activeEntryMenu, setActiveEntryMenu] = useState(null);
   const [deleteSeriesModal, setDeleteSeriesModal] = useState(null); 
   const [showRemindersModal, setShowRemindersModal] = useState(false);
+  const [currentNoteFolderId, setCurrentNoteFolderId] = useState(null);
+  const [noteFolderPath, setNoteFolderPath] = useState([]);
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [closeDayModal, setCloseDayModal] = useState(false);
   const [uncloseDayModal, setUncloseDayModal] = useState(null);
@@ -572,6 +574,7 @@ export default function App() {
     } else if (entryType === 'note') {
       newEntry = {
         ...baseEntry,
+        parentId: currentNoteFolderId
       };
     }
     
@@ -1207,56 +1210,274 @@ export default function App() {
 
   const NotePanel = () => {
     const [search, setSearch] = useState("");
-    const notes = allData.filter(e => e.type === 'note').sort((a,b) => b.timestamp - a.timestamp);
-    const filteredNotes = search ? notes.filter(n => n.content.toLowerCase().includes(search.toLowerCase())) : notes;
+    const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState("");
+    const [longPressedItem, setLongPressedItem] = useState(null);
+    const [isRenameOpen, setIsRenameOpen] = useState(false);
+    const [renameValue, setRenameValue] = useState("");
 
-    const handleAddClick = () => {
-      setActivePanel(null);
+    const allNotesAndFolders = allData.filter(e => (e.type === 'note' || e.type === 'folder'));
+    
+    const deleteRecursive = async (id, type) => {
+      if (type === 'note') {
+        await deleteFromFirebase(id);
+      } else {
+        const children = allData.filter(e => e.parentId === id && (e.type === 'note' || e.type === 'folder'));
+        for (const child of children) {
+          await deleteRecursive(child.id, child.type);
+        }
+        await deleteFromFirebase(id);
+      }
+    };
+
+    const handleCreateFolder = async () => {
+      if (!newFolderName.trim()) return;
+      const id = generateId();
+      await saveToFirebase(id, {
+        type: 'folder',
+        name: newFolderName.trim(),
+        parentId: currentNoteFolderId,
+        timestamp: Date.now()
+      });
+      setIsCreateFolderOpen(false);
+      setNewFolderName("");
+    };
+
+    const handleRename = async () => {
+      if (!renameValue.trim() || !longPressedItem) return;
+      if (longPressedItem.type === 'folder') {
+        await saveToFirebase(longPressedItem.id, { ...longPressedItem, name: renameValue.trim() });
+      } else {
+        await saveToFirebase(longPressedItem.id, { ...longPressedItem, content: renameValue.trim() });
+      }
+      setIsRenameOpen(false);
+      setLongPressedItem(null);
+    };
+
+    const handleDelete = async (item) => {
+      if (window.confirm(`Are you sure you want to delete this ${item.type}?`)) {
+        await deleteRecursive(item.id, item.type);
+        setLongPressedItem(null);
+      }
+    };
+
+    const handleNavigate = (folder) => {
+      setCurrentNoteFolderId(folder.id);
+      setNoteFolderPath([...noteFolderPath, folder]);
+    };
+
+    const handleNavigateUp = (index) => {
+      if (index === -1) {
+         setCurrentNoteFolderId(null);
+         setNoteFolderPath([]);
+      } else {
+         const newPath = noteFolderPath.slice(0, index + 1);
+         setCurrentNoteFolderId(newPath[newPath.length - 1].id);
+         setNoteFolderPath(newPath);
+      }
+    };
+
+    const currentItems = allNotesAndFolders.filter(e => (e.parentId || null) === currentNoteFolderId).sort((a,b) => b.timestamp - a.timestamp);
+    const filteredItems = search ? currentItems.filter(i => (i.name || i.content || '').toLowerCase().includes(search.toLowerCase())) : currentItems;
+
+    const folders = filteredItems.filter(i => i.type === 'folder');
+    const notes = filteredItems.filter(i => i.type === 'note');
+
+    const handleAddNote = () => {
+      setActivePanel(null); // Close the NotePanel so the main modal can show properly on top
       setEntryDate(toLocalISODate(new Date()));
       setEntryHour("12"); setEntryMinute("00"); setEntryAmPm("AM");
       setNewEntryText(""); setEntryType("note"); setEntryPhone("");
-      setEditingEntryId(null);
-      setEntryPrivate(false);
+      setEditingEntryId(null); setEntryPrivate(false);
       setIsModalOpen(true);
+    };
+    
+    const getFolderCounts = (folderId) => {
+      const children = allData.filter(e => e.parentId === folderId && (e.type === 'note' || e.type === 'folder'));
+      let fCount = children.filter(c => c.type === 'folder').length;
+      let nCount = children.filter(c => c.type === 'note').length;
+      return { fCount, nCount };
     };
 
     return (
-      <div className="absolute inset-x-0 bottom-[64px] h-[75%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30" onPointerDown={(e) => e.stopPropagation()}>
-        <PaperTexture />
-        <div className="p-4 border-b border-[#B28A5A]/20 relative z-10 bg-[#EAE3D2]/80 backdrop-blur-sm rounded-t-3xl flex flex-col gap-3">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <h3 className="font-bold text-[#3A2E25] flex items-center gap-2"><StickyNote size={18}/> Keep Notes</h3>
-              <div className="h-4 w-px bg-[#B28A5A]/30" />
-              <DatePickerBadge />
-            </div>
-            <div className="flex items-center gap-4">
-              <button onClick={handleAddClick} className="p-2 text-[#B28A5A] hover:bg-black/5 rounded-full"><Plus size={22}/></button>
-              <div className="w-px h-6 bg-black/10"/>
-              <button onClick={() => setActivePanel(null)} className="p-2 text-black/50 hover:text-black rounded-full"><X size={20}/></button>
-            </div>
-          </div>
-          <div className="relative">
-            <Search size={16} className="absolute left-3 top-2.5 text-black/30" />
-            <input type="text" placeholder="Search notes..." value={search} onChange={e => setSearch(e.target.value)} className="w-full bg-white/60 border border-black/10 rounded-xl pl-9 pr-4 py-2 outline-none focus:border-[#B28A5A] text-sm" />
-          </div>
+      <div className="absolute inset-0 bg-white z-[60] flex flex-col" onPointerDown={(e) => e.stopPropagation()}>
+        {/* Header / Toolbar */}
+        <div className="pt-6 pb-2 px-4 flex justify-between items-center bg-white sticky top-0 z-20">
+           <button onClick={() => setActivePanel(null)} className="p-2 -ml-2 rounded-full hover:bg-black/5 active:scale-95 transition-transform">
+             <Menu size={24} className="text-black/80" />
+           </button>
+           <div className="flex gap-1">
+             <button onClick={() => setIsCreateFolderOpen(true)} className="p-2 rounded-full hover:bg-black/5 active:scale-95 transition-transform" title="Add Folder">
+               <FolderPlus size={22} className="text-black/80" />
+             </button>
+             <button className="p-2 rounded-full hover:bg-black/5 active:scale-95 transition-transform">
+               <Search size={22} className="text-black/80" />
+             </button>
+             <button className="p-2 rounded-full hover:bg-black/5 active:scale-95 transition-transform">
+               <MoreVertical size={22} className="text-black/80" />
+             </button>
+           </div>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 relative z-10 space-y-4">
-          {filteredNotes.map(note => (
-            <div key={note.id} className="bg-yellow-100/50 p-4 rounded-xl shadow-sm border border-yellow-600/20 relative" onPointerDown={(e) => handlePointerDown(e, note.id)} onPointerUp={handlePointerUpOrLeave} onPointerLeave={handlePointerUpOrLeave}>
-              <p className="whitespace-pre-wrap text-[#1A1A1A] leading-relaxed text-[17px]" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600 }}>{note.content}</p>
-              {note.phone && <p className="mt-2"><a href={`tel:${note.phone}`} className="text-blue-600 font-medium relative z-[60]" style={{ fontFamily: "'Comic Neue', 'A10', sans-serif" }}><Phone size={14} className="inline"/> {note.phone}</a></p>}
-              <AnimatePresence>
-                {activeEntryMenu === note.id && (
-                  <motion.div initial={{opacity:0, scale:0.9}} animate={{opacity:1, scale:1}} exit={{opacity:0, scale:0.9}} className="absolute top-2 right-2 flex gap-1 z-[60]" onPointerDown={(e) => e.stopPropagation()}>
-                    <button onClick={(e) => { e.stopPropagation(); handleOpenModal(note); }} className="bg-white text-blue-600 p-2 rounded-lg shadow"><Edit2 size={16}/></button>
-                    <button onClick={(e) => { e.stopPropagation(); deleteFromFirebase(note.id); }} className="bg-white text-red-600 p-2 rounded-lg shadow"><Trash2 size={16}/></button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          ))}
+
+        {/* Title Area */}
+        <div className="px-6 py-2 flex flex-col items-center">
+           <h1 className="text-3xl font-bold text-black mb-1 tracking-tight truncate max-w-[80vw]">
+             {noteFolderPath.length === 0 ? 'Folders' : noteFolderPath[noteFolderPath.length - 1].name}
+           </h1>
+           <p className="text-black/50 text-xs font-medium">
+             {folders.length} {folders.length === 1 ? 'folder' : 'folders'}{notes.length > 0 && `, ${notes.length} ${notes.length === 1 ? 'note' : 'notes'}`}
+           </p>
         </div>
+
+        {/* Breadcrumbs */}
+        <div className="px-4 py-2">
+           <div className="flex items-center gap-1 overflow-x-auto whitespace-nowrap bg-black/5 px-2 py-1.5 rounded-2xl">
+             <button onClick={() => handleNavigateUp(-1)} className="p-1.5 hover:bg-black/10 rounded-full flex items-center justify-center active:scale-95 transition-transform"><Home size={14} className="text-black/60"/></button>
+             {noteFolderPath.map((f, i) => (
+                <React.Fragment key={f.id}>
+                  <ChevronRight size={14} className="text-black/30 shrink-0" />
+                  <button onClick={() => handleNavigateUp(i)} className={`font-medium px-2 py-1 rounded-lg hover:bg-black/10 truncate max-w-[120px] text-[13px] active:scale-95 transition-transform ${i === noteFolderPath.length - 1 ? 'text-black font-bold' : 'text-black/60'}`}>
+                    {i === noteFolderPath.length - 1 ? <><Folder size={12} className="inline mr-1 text-black/40"/> {f.name}</> : f.name}
+                  </button>
+                </React.Fragment>
+             ))}
+           </div>
+        </div>
+
+        {/* Content Grid */}
+        <div className="flex-1 overflow-y-auto px-4 pt-4 pb-[120px]">
+           {/* Folders */}
+           {folders.length > 0 && (
+             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4 mb-6">
+                {folders.map(folder => {
+                   const { nCount, fCount } = getFolderCounts(folder.id);
+                   const totalItems = nCount + fCount;
+                   // Use a hash of ID for stable random color
+                   const hash = folder.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+                   const colorIdx = hash % 5;
+                   const colors = ['bg-[#e8f5e9]', 'bg-[#e3f2fd]', 'bg-[#ffebee]', 'bg-[#f3e5f5]', 'bg-[#fff8e1]'];
+                   const tabColors = ['bg-[#c8e6c9]', 'bg-[#bbdefb]', 'bg-[#ffcdd2]', 'bg-[#e1bee7]', 'bg-[#ffecb3]'];
+
+                   return (
+                     <div key={folder.id} 
+                       className="relative select-none aspect-square cursor-pointer active:scale-95 transition-transform group"
+                       onPointerDown={(e) => {
+                         let timer = setTimeout(() => setLongPressedItem(folder), 500);
+                         e.target.dataset.timer = timer;
+                       }}
+                       onPointerUp={(e) => {
+                         clearTimeout(e.target.dataset.timer);
+                         if (!longPressedItem) handleNavigate(folder);
+                       }}
+                       onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
+                     >
+                       {/* Folder Tab (top left) */}
+                       <div className={`absolute top-0 left-0 w-2/3 h-1/3 rounded-t-xl ${tabColors[colorIdx]}`}></div>
+                       {/* Folder Body */}
+                       <div className={`absolute bottom-0 left-0 w-full h-[85%] rounded-xl rounded-tl-none ${colors[colorIdx]} shadow-sm p-2 flex flex-col justify-between`}>
+                          <span className="text-[9px] font-bold text-black/30 mt-0.5">{totalItems}</span>
+                          <span className="font-bold text-black/80 leading-tight text-xs line-clamp-2 pb-0.5">{folder.name}</span>
+                       </div>
+                     </div>
+                   );
+                })}
+             </div>
+           )}
+
+           {/* Notes */}
+           {notes.length > 0 && (
+             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
+                {notes.map(note => (
+                   <div key={note.id} 
+                     className="bg-white border border-black/10 rounded-xl p-2.5 shadow-sm aspect-square relative select-none cursor-pointer active:scale-95 transition-transform flex flex-col"
+                     onPointerDown={(e) => {
+                       let timer = setTimeout(() => setLongPressedItem(note), 500);
+                       e.target.dataset.timer = timer;
+                     }}
+                     onPointerUp={(e) => {
+                       clearTimeout(e.target.dataset.timer);
+                       if (!longPressedItem) {
+                         setActivePanel(null); 
+                         handleOpenModal(note);
+                       }
+                     }}
+                     onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
+                   >
+                      <p className="text-[9px] text-black/30 font-sans absolute bottom-2 right-2">{(new Date(note.timestamp)).toLocaleDateString('en-GB', {day: 'numeric', month:'short'})}</p>
+                      <p className="text-black text-[11px] leading-relaxed line-clamp-5 overflow-hidden break-words" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600 }}>
+                        {note.content}
+                      </p>
+                      <span className="text-[9px] text-black/30 mt-auto font-sans font-medium">Handwritten</span>
+                   </div>
+                ))}
+             </div>
+           )}
+           
+           {allNotesAndFolders.length === 0 && (
+             <div className="flex flex-col items-center justify-center h-[40vh] text-black/30">
+                <Folder size={48} className="mb-3 opacity-50" />
+                <p className="font-medium text-sm">No folders or notes yet</p>
+             </div>
+           )}
+        </div>
+
+        {/* FAB */}
+        <button onClick={handleAddNote} className="absolute right-6 bottom-6 w-14 h-14 bg-white border border-black/10 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.15)] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-30">
+          <Edit2 size={24} className="text-black" />
+        </button>
+
+        {/* Context Menu (Long Press) */}
+        <AnimatePresence>
+          {longPressedItem && (
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 bg-black/40 z-[100] flex flex-col justify-end" onClick={() => setLongPressedItem(null)}>
+               <motion.div initial={{y:"100%"}} animate={{y:0}} exit={{y:"100%"}} className="bg-white rounded-t-3xl p-6 pb-12 flex justify-around" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => {
+                    setIsRenameOpen(true);
+                    setRenameValue(longPressedItem.type === 'folder' ? longPressedItem.name : longPressedItem.content);
+                  }} className="flex flex-col items-center gap-2 p-4 active:bg-black/5 rounded-2xl transition-colors">
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center"><Edit2 size={24} className="text-blue-600"/></div>
+                    <span className="font-bold text-black/70">Edit</span>
+                  </button>
+                  <button onClick={() => handleDelete(longPressedItem)} className="flex flex-col items-center gap-2 p-4 active:bg-black/5 rounded-2xl transition-colors">
+                    <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center"><Trash2 size={24} className="text-red-600"/></div>
+                    <span className="font-bold text-black/70">Delete</span>
+                  </button>
+               </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Create Folder Modal */}
+        <AnimatePresence>
+          {isCreateFolderOpen && (
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 bg-black/40 z-[110] flex items-center justify-center p-6">
+               <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+                 <h2 className="text-xl font-bold text-black mb-4">Create Folder</h2>
+                 <input autoFocus type="text" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder="Folder name" className="w-full border-b-2 border-black/10 focus:border-black outline-none text-lg py-2 mb-6" />
+                 <div className="flex justify-end gap-2">
+                   <button onClick={() => { setIsCreateFolderOpen(false); setNewFolderName(""); }} className="px-5 py-2.5 rounded-xl font-bold text-black/60 hover:bg-black/5">Cancel</button>
+                   <button onClick={handleCreateFolder} className="px-5 py-2.5 rounded-xl font-bold text-white bg-black hover:bg-black/80">Create</button>
+                 </div>
+               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Rename Modal */}
+        <AnimatePresence>
+          {isRenameOpen && (
+            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="fixed inset-0 bg-black/40 z-[110] flex items-center justify-center p-6">
+               <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+                 <h2 className="text-xl font-bold text-black mb-4">{longPressedItem?.type === 'folder' ? 'Rename Folder' : 'Edit Note Content'}</h2>
+                 <input autoFocus type="text" value={renameValue} onChange={e => setRenameValue(e.target.value)} placeholder="New name" className="w-full border-b-2 border-black/10 focus:border-black outline-none text-lg py-2 mb-6" />
+                 <div className="flex justify-end gap-2">
+                   <button onClick={() => { setIsRenameOpen(false); setRenameValue(""); }} className="px-5 py-2.5 rounded-xl font-bold text-black/60 hover:bg-black/5">Cancel</button>
+                   <button onClick={handleRename} className="px-5 py-2.5 rounded-xl font-bold text-white bg-black hover:bg-black/80">Save</button>
+                 </div>
+               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     );
   };
