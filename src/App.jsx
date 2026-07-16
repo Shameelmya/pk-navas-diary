@@ -1432,13 +1432,20 @@ export default function App() {
                    // Stable random color based on name so they are distinct
                    const hash = folder.name.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
                    const colorIdx = hash % 6;
-                   // Exact Samsung Notes folder color palette
-                   const tabColors = ['#FFB300', '#8CA3F8', '#C7C7C7', '#FF8080', '#B868D8', '#48BDB8'];
-                   const bodyColors = ['#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff', '#ffffff'];
+                   // Exact Samsung Notes pastel folder color palette
+                   const tabColors = [
+                     '#F7DC6F', // Soft Yellow
+                     '#AED6F1', // Soft Sky Blue
+                     '#A9DFBF', // Soft Mint
+                     '#D7BDE2', // Soft Lavender
+                     '#F1948A', // Soft Coral
+                     '#E5E7E9'  // Soft Gray
+                   ];
 
                    return (
                      <div key={folder.id} 
-                       className="relative select-none cursor-pointer active:scale-95 transition-transform group bg-transparent h-[100px]"
+                       className="relative select-none cursor-pointer active:scale-95 transition-transform group bg-transparent h-[110px]"
+                       style={{ filter: 'drop-shadow(0 4px 10px rgba(0,0,0,0.04))' }}
                        onContextMenu={(e) => {
                          e.preventDefault();
                          setLongPressedItem(folder);
@@ -1458,16 +1465,45 @@ export default function App() {
                        }}
                        onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                      >
-                       {/* SVG Tabbed Folder exactly matching screenshot */}
-                       <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.05))' }}>
-                          {/* Colored Tab (Placed behind white body) */}
-                          <path d="M45,26 C52,26 53,6 60,6 L80,6 Q100,6 100,26 L100,35 L45,35 Z" fill={tabColors[colorIdx]} />
-                          {/* White Body */}
-                          <path d="M0,46 Q0,26 20,26 L100,26 L100,80 Q100,100 80,100 L20,100 Q0,100 0,80 Z" fill={bodyColors[colorIdx]} />
-                       </svg>
-                       <div className="absolute inset-0 pt-9 pb-3 px-4 flex flex-col justify-between pointer-events-none">
-                          <span className="text-[13px] font-semibold text-black/40 tracking-wide">{totalItems}</span>
-                          <span className="text-[15px] font-bold text-[#333333] leading-tight line-clamp-2" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
+                       {/* Colored Tab */}
+                       <div 
+                         className="absolute right-0 top-0 w-[45%]"
+                         style={{ 
+                           height: '40px',
+                           backgroundColor: tabColors[colorIdx],
+                           borderTopRightRadius: '16px',
+                           borderTopLeftRadius: '12px'
+                         }}
+                       >
+                         {/* Concave Bridge for seamless S-curve transition */}
+                         <div 
+                           className="absolute"
+                           style={{
+                             left: '-12px',
+                             top: '12px',
+                             width: '12px',
+                             height: '12px',
+                             background: `radial-gradient(circle at 0 0, transparent 12px, ${tabColors[colorIdx]} 12.5px)`
+                           }}
+                         />
+                       </div>
+
+                       {/* White Body */}
+                       <div 
+                         className="absolute bottom-0 left-0 w-full bg-white"
+                         style={{
+                           height: 'calc(100% - 24px)',
+                           borderTopLeftRadius: '16px',
+                           borderBottomLeftRadius: '16px',
+                           borderBottomRightRadius: '16px',
+                           borderTopRightRadius: '0px'
+                         }}
+                       >
+                         {/* Text Content */}
+                         <div className="absolute inset-0 p-4 pt-3 flex flex-col justify-between pointer-events-none">
+                           <span className="text-xs font-normal text-[#999999] tracking-wide ml-1">{totalItems}</span>
+                           <span className="text-[15px] font-medium text-[#333333] leading-snug line-clamp-2 ml-1 pb-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{folder.name}</span>
+                         </div>
                        </div>
                      </div>
                    );
