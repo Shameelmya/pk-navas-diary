@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Plus, Edit2, Check, ArrowRight, RotateCcw, 
-  MapPin, Clock, Calendar, CheckCircle2, Circle, 
-  BookOpen, Eye, EyeOff, Layout, List, MoreHorizontal,
+  Plus, Calendar as CalendarIcon, X, Check, Bell, Book, Phone, 
+  Edit2, Trash2, CheckCircle, Clock, Crown, User, Users, Lock, BookOpen, 
   Target, Settings, Download, Upload, Trash, LogOut, 
   StickyNote, Ban, Search, AlertCircle, ListTodo, CalendarCheck,
-  History, Menu, FolderPlus, Folder, MoreVertical, Home, ChevronRight, FileText, X
+  History, Menu, FolderPlus, Folder, MoreVertical, Home, ChevronRight, FileText
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
