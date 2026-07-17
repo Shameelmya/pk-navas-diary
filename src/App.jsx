@@ -610,7 +610,7 @@ export default function App() {
   };
 
   const handlePointerDown = (e, id) => {
-    if (loginRole === 'sub' || loginRole === 'sub2') return; 
+    if (loginRole === 'sub2') return; 
     if (e.target.closest('button') || e.target.closest('a') || e.target.closest('input') || e.target.closest('select')) return;
     if (activeEntryMenu === id) return;
     holdTimer.current = setTimeout(() => {
@@ -762,20 +762,19 @@ export default function App() {
               )}
             </div>
           )}
-          {loginRole === 'sub2' && entry.type === 'diary' && entry.copiedToPhysical && (
-            <div className="flex items-center justify-center shrink-0 min-w-[50px] h-[40px] pl-2 pr-2 relative z-[70]" onPointerDown={(e) => e.stopPropagation()}>
-              <span className="text-green-600 font-bold select-none relative z-[80]" style={{ fontFamily: "'Comic Neue', cursive", fontSize: '28px', lineHeight: '32px' }}>✓</span>
-            </div>
-          )}
         </div>
 
         <AnimatePresence>
-          {activeEntryMenu === entry.id && loginRole === 'main' && (
+          {activeEntryMenu === entry.id && (loginRole === 'main' || loginRole === 'sub') && (
             <motion.div initial={{ opacity: 0, y: -5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute top-[28px] left-0 bg-white/95 backdrop-blur-md shadow-lg rounded-xl flex items-center gap-1 p-1 z-[80] border border-black/5" onPointerDown={(e) => e.stopPropagation()}>
-              <button onClick={(e) => { e.stopPropagation(); saveToFirebase(entry.id, { ...entry, completed: !entry.completed }); setActiveEntryMenu(null); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
-                <CheckCircle size={22} className={entry.completed ? 'fill-green-500 text-white' : ''} />
-              </button>
-              <div className="w-px h-6 bg-black/10 mx-0.5" />
+              {loginRole === 'main' && (
+                <>
+                  <button onClick={(e) => { e.stopPropagation(); saveToFirebase(entry.id, { ...entry, completed: !entry.completed }); setActiveEntryMenu(null); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
+                    <CheckCircle size={22} className={entry.completed ? 'fill-green-500 text-white' : ''} />
+                  </button>
+                  <div className="w-px h-6 bg-black/10 mx-0.5" />
+                </>
+              )}
               <button onClick={(e) => { e.stopPropagation(); handleOpenModal(entry); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
                 <Edit2 size={20} />
               </button>
