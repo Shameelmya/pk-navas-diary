@@ -93,6 +93,13 @@ const playFlipSound = () => {
 
 const formatDate = (date) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 const getDayName = (date) => new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(date);
+const getOrdinalSuffix = (i) => {
+  let j = i % 10, k = i % 100;
+  if (j === 1 && k !== 11) return i + "st";
+  if (j === 2 && k !== 12) return i + "nd";
+  if (j === 3 && k !== 13) return i + "rd";
+  return i + "th";
+};
 const formatTime = (date) => new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(date);
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
@@ -840,6 +847,11 @@ export default function App() {
     const diaryEntries = allData.filter(e => e.type === 'diary' && e.dateString === date.toDateString());
     const isClosed = allData.find(e => e.type === 'closed_day' && e.dateStr === targetDateStr);
     
+    const baseDate = new Date(2026, 4, 21); // May 21, 2026
+    const curDateLocal = new Date(date);
+    curDateLocal.setHours(0, 0, 0, 0);
+    const diffDays = Math.round((curDateLocal.getTime() - baseDate.getTime()) / (1000 * 3600 * 24));
+    
     let sortedDisplayEntries = [];
     if (loginRole === 'sub' || loginRole === 'sub2') {
       const visibleDiaryEntries = diaryEntries.filter(e => !e.isPrivate);
@@ -904,8 +916,11 @@ export default function App() {
           <label className="text-center cursor-pointer active:scale-95 transition-transform relative group z-[70] mx-2 flex flex-col items-center">
             <input type="date" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" value={targetDateStr} onChange={(e) => handleJumpDate(e.target.value)} />
             <h1 className="text-[20px] sm:text-2xl font-bold tracking-tight text-[#1A1A1A] group-hover:text-[#B28A5A] transition-colors">{formatDate(date)}</h1>
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mt-1 flex items-center justify-center gap-2 flex-wrap">
               <span className="text-[#B28A5A]">{getDayName(date)}</span>
+              {diffDays > 0 && (
+                <span className="text-[#B28A5A]">• {getOrdinalSuffix(diffDays)} Day</span>
+              )}
               {sortedDisplayEntries.length > 0 && (
                  <span className="bg-[#B28A5A]/10 text-[#B28A5A] px-2 py-0.5 rounded-md font-extrabold">{sortedDisplayEntries.length} Events</span>
               )}
