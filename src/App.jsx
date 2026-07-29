@@ -205,11 +205,6 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
           <ChevronLeft size={28} strokeWidth={2.5} className="-ml-2" />
           <span>{selectedDate.getFullYear()}</span>
         </button>
-        <div className="flex items-center gap-5 text-red-500">
-          <button><ListTodo size={24} /></button>
-          <button><Search size={24} /></button>
-          <button><Plus size={26} strokeWidth={2.5} /></button>
-        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -286,10 +281,6 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
 
       <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-100 px-6 py-4 flex justify-between items-center pb-8">
         <button onClick={() => { const d = new Date(); setCurrentViewDate(d); setSelectedDate(d); }} className="text-red-500 font-bold text-[17px]">Today</button>
-        <div className="flex gap-8 text-red-500">
-           <button><CalendarIcon size={24} strokeWidth={2}/></button>
-           <button><Book size={24} strokeWidth={2}/></button>
-        </div>
       </div>
     </motion.div>
   );
