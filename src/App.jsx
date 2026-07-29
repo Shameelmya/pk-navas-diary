@@ -282,8 +282,20 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
                 const timeStr = e.time ? e.time.toLowerCase() : '';
                 const isAM = timeStr.includes('am');
                 const isPM = timeStr.includes('pm');
-                const bgColor = isAM ? 'bg-blue-50/70' : isPM ? 'bg-orange-50/70' : 'bg-emerald-50/70';
-                const barColor = isAM ? 'bg-blue-400' : isPM ? 'bg-orange-400' : 'bg-emerald-400';
+                
+                let bgColor = 'bg-emerald-50/70';
+                let barColor = 'bg-emerald-400';
+
+                if (e.type === 'event') {
+                  bgColor = 'bg-purple-50/70';
+                  barColor = 'bg-purple-400';
+                } else if (e.type === 'reminder') {
+                  bgColor = 'bg-pink-50/70';
+                  barColor = 'bg-pink-400';
+                } else {
+                  if (isAM) { bgColor = 'bg-blue-50/70'; barColor = 'bg-blue-400'; }
+                  else if (isPM) { bgColor = 'bg-orange-50/70'; barColor = 'bg-orange-400'; }
+                }
                 return (
                   <div key={e.id} className={`flex items-start gap-3 p-3 rounded-xl border border-gray-100 shadow-sm ${bgColor}`}>
                     <div className={`w-1 h-12 rounded-full shrink-0 ${barColor}`} />
