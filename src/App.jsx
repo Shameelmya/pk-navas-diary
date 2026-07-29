@@ -91,6 +91,8 @@ const playFlipSound = () => {
   } catch (e) { console.log("Audio play failed.", e); }
 };
 
+const islamicMonthsMl = ["മുഹ.", "സഫർ", "റ. അവ്വൽ", "റ. ആഖിർ", "ജ. അവ്വൽ", "ജ. ആഖിർ", "റജബ്", "ശഅ.", "റമ.", "ശവ്വാൽ", "ദുൽ ഖ.", "ദുൽ ഹി."];
+
 const formatDate = (date) => new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 const getDayName = (date) => new Intl.DateTimeFormat('en-GB', { weekday: 'long' }).format(date);
 const getOrdinalSuffix = (i) => {
@@ -172,11 +174,13 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
 
   const getHijriText = (dateObj) => {
     try {
-      const formatter = new Intl.DateTimeFormat('ml-IN-u-ca-islamic-umalqura', { day: 'numeric', month: 'short' });
+      const formatter = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', { day: 'numeric', month: 'numeric' });
       const parts = formatter.formatToParts(dateObj);
       const day = parts.find(p => p.type === 'day')?.value;
-      const month = parts.find(p => p.type === 'month')?.value;
-      if (day === '1' || day === '01' || day === '١') return month;
+      const monthStr = parts.find(p => p.type === 'month')?.value;
+      const monthIdx = parseInt(monthStr, 10) - 1;
+      const monthName = islamicMonthsMl[monthIdx] || '';
+      if (day === '1' || day === '01') return monthName;
       return day;
     } catch (e) {
       return '';
@@ -192,7 +196,18 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
     );
   };
 
-  const selectedDateEvents = getEventsForDate(selectedDate);
+  const parseTimeForSort = (timeStr) => {
+    if (!timeStr) return -1;
+    const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!match) return -1;
+    let [_, h, m, ampm] = match;
+    h = parseInt(h);
+    if (ampm.toUpperCase() === 'PM' && h !== 12) h += 12;
+    if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+    return h * 60 + parseInt(m);
+  };
+
+  const selectedDateEvents = getEventsForDate(selectedDate).sort((a, b) => parseTimeForSort(a.time) - parseTimeForSort(b.time));
   
   return (
     <motion.div 
@@ -247,6 +262,13 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
                       {hijriText}
                     </span>
                   </div>
+                  {events.length > 0 && (
+                    <div className="flex gap-0.5 mt-1">
+                      {events.slice(0, 3).map((e, i) => (
+                        <div key={i} className={`w-[5px] h-[5px] rounded-full ${isSelected ? 'bg-gray-400' : 'bg-emerald-300'}`} />
+                      ))}
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -256,15 +278,22 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
         <div className="border-t border-gray-100 bg-gray-50 min-h-[200px] p-4 pb-20">
           {selectedDateEvents.length > 0 ? (
             <div className="space-y-3">
-              {selectedDateEvents.map(e => (
-                <div key={e.id} className="flex items-start gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
-                  <div className="w-1 h-12 bg-red-400 rounded-full shrink-0" />
-                  <div className="flex-1">
-                    <h3 className="font-bold text-black text-[15px]">{e.content}</h3>
-                    {e.time && <p className="text-xs text-gray-500 mt-1 font-medium">{e.time}</p>}
+              {selectedDateEvents.map(e => {
+                const timeStr = e.time ? e.time.toLowerCase() : '';
+                const isAM = timeStr.includes('am');
+                const isPM = timeStr.includes('pm');
+                const bgColor = isAM ? 'bg-blue-50/70' : isPM ? 'bg-orange-50/70' : 'bg-emerald-50/70';
+                const barColor = isAM ? 'bg-blue-400' : isPM ? 'bg-orange-400' : 'bg-emerald-400';
+                return (
+                  <div key={e.id} className={`flex items-start gap-3 p-3 rounded-xl border border-gray-100 shadow-sm ${bgColor}`}>
+                    <div className={`w-1 h-12 rounded-full shrink-0 ${barColor}`} />
+                    <div className="flex-1">
+                      <h3 className="font-bold text-black text-[15px]">{e.content}</h3>
+                      {e.time && <p className="text-xs text-gray-500 mt-1 font-medium">{e.time}</p>}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
              <div className="text-center text-gray-400 mt-8 font-medium">No Events</div>
