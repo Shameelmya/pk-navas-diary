@@ -201,7 +201,7 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
       style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-        <button onClick={() => { onDateSelect(selectedDate); onClose(); }} className="flex items-center text-red-500 hover:text-red-600 font-medium text-lg">
+        <button onClick={() => { onDateSelect(selectedDate); onClose(); }} className="flex items-center text-black hover:text-gray-700 font-semibold text-[17px] tracking-tight">
           <ChevronLeft size={28} strokeWidth={2.5} className="-ml-2" />
           <span>{selectedDate.getFullYear()}</span>
         </button>
@@ -240,20 +240,13 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
                   className="flex flex-col items-center justify-start h-[52px] relative group w-full"
                 >
                   <div className={`w-10 h-10 flex flex-col items-center justify-center rounded-full transition-colors ${isSelected ? 'bg-black text-white' : isToday ? 'text-red-500' : isWeekend ? 'text-gray-400' : 'text-black'}`}>
-                    <span className="text-[20px] font-medium leading-none" style={{ letterSpacing: '-0.02em' }}>
+                    <span className="text-[22px] font-bold leading-none" style={{ letterSpacing: '-0.02em' }}>
                       {dateObj.getDate()}
                     </span>
-                    <span className={`text-[8.5px] mt-0.5 leading-none ${isSelected ? 'text-white/80' : 'text-gray-400 font-medium'}`} style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>
+                    <span className={`text-[9px] mt-0.5 leading-none ${isSelected ? 'text-white/80' : 'text-gray-400 font-bold'}`} style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>
                       {hijriText}
                     </span>
                   </div>
-                  {events.length > 0 && (
-                    <div className="flex gap-0.5 mt-0.5">
-                      {events.slice(0, 3).map((e, i) => (
-                        <div key={i} className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-gray-300' : e.isPrivate ? 'bg-red-400' : 'bg-gray-300'}`} />
-                      ))}
-                    </div>
-                  )}
                 </button>
               );
             })}
