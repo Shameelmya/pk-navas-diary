@@ -148,7 +148,7 @@ const LeatherTexture = () => (
     <rect width="100%" height="100%" filter="url(#leatherNoise)"/>
   </svg>
 );
-const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelect }) => {
+const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelect, onAddEntry, onViewReminders, footerComponent }) => {
   const [currentViewDate, setCurrentViewDate] = useState(initialDate || new Date());
   const [selectedDate, setSelectedDate] = useState(initialDate || new Date());
   
@@ -212,7 +212,7 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-      className="fixed inset-0 bg-white z-[200] flex flex-col"
+      className="fixed inset-0 bg-white z-[80] flex flex-col pb-[64px]"
       style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -220,6 +220,11 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
           <ChevronLeft size={28} strokeWidth={2.5} className="-ml-2" />
           <span>{selectedDate.getFullYear()}</span>
         </button>
+        <div className="flex items-center gap-4">
+          <button onClick={() => { const d = new Date(); setCurrentViewDate(d); setSelectedDate(d); }} className="text-red-500 font-bold text-[17px]">Today</button>
+          <button onClick={onViewReminders} className="text-black hover:text-gray-600"><Bell size={22} /></button>
+          <button onClick={onAddEntry} className="text-black hover:text-gray-600"><Plus size={28} strokeWidth={2.5} /></button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -313,9 +318,7 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-100 px-6 py-4 flex justify-between items-center pb-8">
-        <button onClick={() => { const d = new Date(); setCurrentViewDate(d); setSelectedDate(d); }} className="text-red-500 font-bold text-[17px]">Today</button>
-      </div>
+      {footerComponent && footerComponent()}
     </motion.div>
   );
 };
@@ -1088,7 +1091,11 @@ export default function App() {
           </div> 
           
           <label className="text-center cursor-pointer active:scale-95 transition-transform relative group z-[70] mx-2 flex flex-col items-center">
-            <button onClick={(e) => { e.stopPropagation(); setAppleCalendarOpen(true); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
+            {loginRole === 'main' ? (
+              <button onClick={(e) => { e.stopPropagation(); setAppleCalendarOpen(true); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
+            ) : (
+              <input type="date" value={toLocalISODate(date)} onChange={(e) => handleJumpDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
+            )}
             <h1 className="text-[20px] sm:text-2xl font-bold tracking-tight text-[#1A1A1A] group-hover:text-[#B28A5A] transition-colors">{formatDate(date)}</h1>
             <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mt-1 flex items-center justify-center gap-2 flex-wrap">
               <span className="text-[#B28A5A]">{getDayName(date)}</span>
@@ -1154,7 +1161,11 @@ export default function App() {
 
   const DatePickerBadge = () => (
     <label className="cursor-pointer relative group flex items-center gap-1 border border-[#B28A5A]/30 rounded-lg px-2 py-1 bg-white/50" onPointerDown={(e) => e.stopPropagation()}>
-        <button onClick={(e) => { e.stopPropagation(); setAppleCalendarOpen(true); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
+        {loginRole === 'main' ? (
+          <button onClick={(e) => { e.stopPropagation(); setAppleCalendarOpen(true); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
+        ) : (
+          <input type="date" value={toLocalISODate(currentDate)} onChange={(e) => handleJumpDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
+        )}
         <CalendarIcon size={12} className="text-[#B28A5A]"/>
         <span className="text-xs font-bold text-[#B28A5A] group-hover:text-[#3A2E25] transition-colors">{formatDate(currentDate)}</span>
     </label>
@@ -2391,6 +2402,9 @@ export default function App() {
             initialDate={currentDate} 
             allData={allData} 
             onDateSelect={(d) => handleJumpDate(toLocalISODate(d))} 
+            onAddEntry={() => setIsModalOpen(true)}
+            onViewReminders={() => setShowRemindersModal(true)}
+            footerComponent={renderFooter}
           />
         )}
       </AnimatePresence>
