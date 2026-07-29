@@ -216,10 +216,25 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
       style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-        <button onClick={() => { onDateSelect(selectedDate); onClose(); }} className="flex items-center text-black hover:text-gray-700 font-semibold text-[17px] tracking-tight">
-          <ChevronLeft size={28} strokeWidth={2.5} className="-ml-2" />
-          <span>{selectedDate.getFullYear()}</span>
-        </button>
+        <div className="relative flex items-center">
+          <select 
+            value={selectedDate.getFullYear()} 
+            onChange={(e) => {
+              const newYear = parseInt(e.target.value, 10);
+              const d = new Date(selectedDate);
+              d.setFullYear(newYear);
+              setCurrentViewDate(d);
+              setSelectedDate(d);
+              onDateSelect(d);
+            }} 
+            className="appearance-none bg-transparent font-semibold text-[17px] tracking-tight text-black outline-none cursor-pointer pr-4 hover:text-gray-700"
+          >
+            {Array.from({length: 30}, (_, i) => 2010 + i).map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <div className="pointer-events-none absolute right-0 flex items-center text-black">
+             <ChevronRight size={14} className="rotate-90 text-black/50" />
+          </div>
+        </div>
         <div className="flex items-center gap-5 sm:gap-6">
           <button 
             onPointerDown={() => { window.modeSwitchTimer = setTimeout(onToggleMode, 1500); }} 
