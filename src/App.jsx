@@ -148,7 +148,7 @@ const LeatherTexture = () => (
     <rect width="100%" height="100%" filter="url(#leatherNoise)"/>
   </svg>
 );
-const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelect, onAddEntry, onViewReminders, footerComponent }) => {
+const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelect, onAddEntry, onViewReminders, footerComponent, onToggleMode }) => {
   const [currentViewDate, setCurrentViewDate] = useState(initialDate || new Date());
   const [selectedDate, setSelectedDate] = useState(initialDate || new Date());
   
@@ -212,7 +212,7 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
-      className="fixed inset-0 bg-white z-[80] flex flex-col pb-[64px]"
+      className="fixed inset-0 bg-white z-[40] flex flex-col pb-[64px]"
       style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
@@ -221,6 +221,13 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
           <span>{selectedDate.getFullYear()}</span>
         </button>
         <div className="flex items-center gap-4">
+          <button 
+            onPointerDown={() => { window.modeSwitchTimer = setTimeout(onToggleMode, 1500); }} 
+            onPointerUp={() => clearTimeout(window.modeSwitchTimer)} 
+            onPointerLeave={() => clearTimeout(window.modeSwitchTimer)} 
+            className="text-black hover:text-gray-600"
+            title="Switch View Mode (Hold 1.5s)"
+          ><Menu size={22} /></button>
           <button onClick={() => { const d = new Date(); setCurrentViewDate(d); setSelectedDate(d); }} className="text-red-500 font-bold text-[17px]">Today</button>
           <button onClick={onViewReminders} className="text-black hover:text-gray-600"><Bell size={22} /></button>
           <button onClick={onAddEntry} className="text-black hover:text-gray-600"><Plus size={28} strokeWidth={2.5} /></button>
@@ -339,7 +346,7 @@ export default function App() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Modals & Forms
-  const [isAppleCalendarOpen, setAppleCalendarOpen] = useState(false);
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('diary_view_mode') || 'diary');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [newEntryText, setNewEntryText] = useState("");
@@ -1058,13 +1065,24 @@ export default function App() {
         <div className="w-full z-[60] flex items-center justify-between pt-5 pb-3 border-b border-[rgba(178,138,90,0.3)] bg-transparent backdrop-blur-sm shrink-0 px-4 sm:px-8 relative" onPointerDown={(e) => e.stopPropagation()}>
           <div className="w-auto flex items-center justify-start gap-1 z-50 min-w-[50px]">
             {loginRole === 'main' && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); setShowRemindersModal(true); }} 
-                className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 relative ${reminders.length > 0 ? 'bg-red-500 text-white animate-reminder-pulse shadow-md border-none' : 'text-[#B28A5A] hover:bg-black/5'}`} 
-                title="Today's Reminders"
-              >
-                <Bell size={22} />
-              </button>
+              <>
+                <button 
+                  onPointerDown={() => { window.modeSwitchTimer = setTimeout(() => { const nm = viewMode === 'diary' ? 'calendar' : 'diary'; setViewMode(nm); localStorage.setItem('diary_view_mode', nm); }, 1500); }} 
+                  onPointerUp={() => clearTimeout(window.modeSwitchTimer)} 
+                  onPointerLeave={() => clearTimeout(window.modeSwitchTimer)} 
+                  className="w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 relative text-[#B28A5A] hover:bg-black/5" 
+                  title="Switch View Mode (Hold 1.5s)"
+                >
+                  <Menu size={22} />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setShowRemindersModal(true); }} 
+                  className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 relative ${reminders.length > 0 ? 'bg-red-500 text-white animate-reminder-pulse shadow-md border-none' : 'text-[#B28A5A] hover:bg-black/5'}`} 
+                  title="Today's Reminders"
+                >
+                  <Bell size={22} />
+                </button>
+              </>
             )}
             
             {loginRole === 'sub' && (
@@ -1091,11 +1109,7 @@ export default function App() {
           </div> 
           
           <label className="text-center cursor-pointer active:scale-95 transition-transform relative group z-[70] mx-2 flex flex-col items-center">
-            {loginRole === 'main' ? (
-              <button onClick={(e) => { e.stopPropagation(); setAppleCalendarOpen(true); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
-            ) : (
-              <input type="date" value={toLocalISODate(date)} onChange={(e) => handleJumpDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
-            )}
+            <input type="date" value={toLocalISODate(date)} onChange={(e) => handleJumpDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
             <h1 className="text-[20px] sm:text-2xl font-bold tracking-tight text-[#1A1A1A] group-hover:text-[#B28A5A] transition-colors">{formatDate(date)}</h1>
             <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mt-1 flex items-center justify-center gap-2 flex-wrap">
               <span className="text-[#B28A5A]">{getDayName(date)}</span>
@@ -1140,20 +1154,20 @@ export default function App() {
     );
   };
 
-  const renderFooter = () => {
+  const renderFooter = (isWhiteMode = false) => {
     if (loginRole !== 'main') return null;
     return (
-      <div className="absolute bottom-0 left-0 right-0 h-[64px] bg-[#DCD2BE] border-t border-[#B28A5A]/50 z-[60] flex items-center justify-between px-2 sm:px-6 rounded-b-[2rem] sm:rounded-b-3xl shadow-[inset_0_4px_10px_rgba(0,0,0,0.03),_0_-4px_15px_rgba(0,0,0,0.05)]">
-        <PaperTexture />
-        <div className="relative z-10 w-full flex justify-between items-center text-[#3A2E25]/80" onPointerDown={(e) => e.stopPropagation()}>
+      <div className={`absolute bottom-0 left-0 right-0 h-[64px] border-t z-[60] flex items-center justify-between px-2 sm:px-6 rounded-b-[2rem] sm:rounded-b-3xl ${isWhiteMode ? 'bg-white border-gray-100 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] text-black' : 'bg-[#DCD2BE] border-[#B28A5A]/50 shadow-[inset_0_4px_10px_rgba(0,0,0,0.03),_0_-4px_15px_rgba(0,0,0,0.05)] text-[#3A2E25]/80'}`}>
+        {!isWhiteMode && <PaperTexture />}
+        <div className="relative z-10 w-full flex justify-between items-center" onPointerDown={(e) => e.stopPropagation()}>
           <button onClick={() => setShowLogoutConfirm(true)} className="p-3 text-red-600 hover:text-red-800 transition-colors" title="Log Out"><LogOut size={22} /></button>
-          <button onClick={() => setActivePanel(p => p === 'settings' ? null : 'settings')} className={`p-3 transition-colors ${activePanel === 'settings' ? 'text-[#B28A5A]' : 'hover:text-[#3A2E25]'}`} title="Settings"><Settings size={22} /></button>
+          <button onClick={() => setActivePanel(p => p === 'settings' ? null : 'settings')} className={`p-3 transition-colors ${activePanel === 'settings' ? (isWhiteMode ? 'text-blue-500' : 'text-[#B28A5A]') : (isWhiteMode ? 'hover:text-gray-500' : 'hover:text-[#3A2E25]')}`} title="Settings"><Settings size={22} /></button>
           {loginRole !== 'sub2' && (
-            <button onClick={() => setActivePanel(p => p === 'reading' ? null : 'reading')} className={`p-3 transition-colors ${activePanel === 'reading' ? 'text-[#B28A5A]' : 'hover:text-[#3A2E25]'}`} title="Reading Targets"><BookOpen size={22} /></button>
+            <button onClick={() => setActivePanel(p => p === 'reading' ? null : 'reading')} className={`p-3 transition-colors ${activePanel === 'reading' ? (isWhiteMode ? 'text-blue-500' : 'text-[#B28A5A]') : (isWhiteMode ? 'hover:text-gray-500' : 'hover:text-[#3A2E25]')}`} title="Reading Targets"><BookOpen size={22} /></button>
           )}
-          <button onClick={() => setActivePanel(p => p === 'todo' ? null : 'todo')} className={`p-3 transition-colors ${activePanel === 'todo' ? 'text-[#B28A5A]' : 'hover:text-[#3A2E25]'}`} title="To-Do List"><ListTodo size={22} /></button>
-          <button onClick={() => { if (activePanel !== 'note') { window.history.pushState(null, '', '#notes'); setActivePanel('note'); } else { window.history.back(); } }} className={`p-3 transition-colors ${activePanel === 'note' ? 'text-[#B28A5A]' : 'hover:text-[#3A2E25]'}`} title="Keep Notes"><StickyNote size={22} /></button>
-          <button onClick={() => setActivePanel(p => p === 'event' ? null : 'event')} className={`p-3 transition-colors ${activePanel === 'event' ? 'text-[#B28A5A]' : 'hover:text-[#3A2E25]'}`} title="Event Records"><CalendarCheck size={22} /></button>
+          <button onClick={() => setActivePanel(p => p === 'todo' ? null : 'todo')} className={`p-3 transition-colors ${activePanel === 'todo' ? (isWhiteMode ? 'text-blue-500' : 'text-[#B28A5A]') : (isWhiteMode ? 'hover:text-gray-500' : 'hover:text-[#3A2E25]')}`} title="To-Do List"><ListTodo size={22} /></button>
+          <button onClick={() => { if (activePanel !== 'note') { window.history.pushState(null, '', '#notes'); setActivePanel('note'); } else { window.history.back(); } }} className={`p-3 transition-colors ${activePanel === 'note' ? (isWhiteMode ? 'text-blue-500' : 'text-[#B28A5A]') : (isWhiteMode ? 'hover:text-gray-500' : 'hover:text-[#3A2E25]')}`} title="Keep Notes"><StickyNote size={22} /></button>
+          <button onClick={() => setActivePanel(p => p === 'event' ? null : 'event')} className={`p-3 transition-colors ${activePanel === 'event' ? (isWhiteMode ? 'text-blue-500' : 'text-[#B28A5A]') : (isWhiteMode ? 'hover:text-gray-500' : 'hover:text-[#3A2E25]')}`} title="Event Records"><CalendarCheck size={22} /></button>
         </div>
       </div>
     );
@@ -1161,11 +1175,7 @@ export default function App() {
 
   const DatePickerBadge = () => (
     <label className="cursor-pointer relative group flex items-center gap-1 border border-[#B28A5A]/30 rounded-lg px-2 py-1 bg-white/50" onPointerDown={(e) => e.stopPropagation()}>
-        {loginRole === 'main' ? (
-          <button onClick={(e) => { e.stopPropagation(); setAppleCalendarOpen(true); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
-        ) : (
-          <input type="date" value={toLocalISODate(currentDate)} onChange={(e) => handleJumpDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
-        )}
+        <input type="date" value={toLocalISODate(currentDate)} onChange={(e) => handleJumpDate(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
         <CalendarIcon size={12} className="text-[#B28A5A]"/>
         <span className="text-xs font-bold text-[#B28A5A] group-hover:text-[#3A2E25] transition-colors">{formatDate(currentDate)}</span>
     </label>
@@ -2395,16 +2405,17 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {isAppleCalendarOpen && (
+        {viewMode === 'calendar' && loginRole === 'main' && (
           <AppleCalendarModal 
-            isOpen={isAppleCalendarOpen} 
-            onClose={() => setAppleCalendarOpen(false)} 
+            isOpen={true} 
+            onClose={() => {}} 
             initialDate={currentDate} 
             allData={allData} 
             onDateSelect={(d) => handleJumpDate(toLocalISODate(d))} 
             onAddEntry={() => setIsModalOpen(true)}
             onViewReminders={() => setShowRemindersModal(true)}
-            footerComponent={renderFooter}
+            footerComponent={() => renderFooter(true)}
+            onToggleMode={() => { setViewMode('diary'); localStorage.setItem('diary_view_mode', 'diary'); }}
           />
         )}
       </AnimatePresence>
