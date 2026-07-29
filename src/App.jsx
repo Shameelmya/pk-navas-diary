@@ -5,7 +5,7 @@ import {
   Edit2, Trash2, CheckCircle, Clock, Crown, User, Users, Lock, BookOpen, 
   Target, Settings, Download, Upload, Trash, LogOut, 
   StickyNote, Ban, Search, AlertCircle, ListTodo, CalendarCheck,
-  History, Menu, FolderPlus, Folder, MoreVertical, Home, ChevronRight, FileText
+  History, Menu, FolderPlus, Folder, MoreVertical, Home, ChevronRight, ChevronLeft, FileText
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
@@ -146,6 +146,154 @@ const LeatherTexture = () => (
     <rect width="100%" height="100%" filter="url(#leatherNoise)"/>
   </svg>
 );
+const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelect }) => {
+  const [currentViewDate, setCurrentViewDate] = useState(initialDate || new Date());
+  const [selectedDate, setSelectedDate] = useState(initialDate || new Date());
+  
+  useEffect(() => {
+    if (isOpen && initialDate) {
+      setCurrentViewDate(initialDate);
+      setSelectedDate(initialDate);
+    }
+  }, [isOpen, initialDate]);
+
+  if (!isOpen) return null;
+
+  const handlePrevMonth = () => setCurrentViewDate(new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() - 1, 1));
+  const handleNextMonth = () => setCurrentViewDate(new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 1));
+
+  const daysInMonth = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth() + 1, 0).getDate();
+  const firstDayOfMonth = new Date(currentViewDate.getFullYear(), currentViewDate.getMonth(), 1).getDay();
+  const startOffset = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+
+  const daysArray = [];
+  for (let i = 0; i < startOffset; i++) daysArray.push(null);
+  for (let i = 1; i <= daysInMonth; i++) daysArray.push(new Date(currentViewDate.getFullYear(), currentViewDate.getMonth(), i));
+
+  const getHijriText = (dateObj) => {
+    try {
+      const formatter = new Intl.DateTimeFormat('ml-IN-u-ca-islamic-umalqura', { day: 'numeric', month: 'short' });
+      const parts = formatter.formatToParts(dateObj);
+      const day = parts.find(p => p.type === 'day')?.value;
+      const month = parts.find(p => p.type === 'month')?.value;
+      if (day === '1' || day === '01' || day === '١') return month;
+      return day;
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const getEventsForDate = (dateObj) => {
+    const ds = toLocalISODate(dateObj);
+    return allData.filter(e => 
+      (e.type === 'diary' && e.dateString === dateObj.toDateString()) ||
+      (e.type === 'event' && e.dateString === dateObj.toDateString()) || 
+      (e.type === 'reminder' && isRecurringOnDate(e, ds))
+    );
+  };
+
+  const selectedDateEvents = getEventsForDate(selectedDate);
+  
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+      className="fixed inset-0 bg-white z-[200] flex flex-col"
+      style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+    >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <button onClick={() => { onDateSelect(selectedDate); onClose(); }} className="flex items-center text-red-500 hover:text-red-600 font-medium text-lg">
+          <ChevronLeft size={28} strokeWidth={2.5} className="-ml-2" />
+          <span>{selectedDate.getFullYear()}</span>
+        </button>
+        <div className="flex items-center gap-5 text-red-500">
+          <button><ListTodo size={24} /></button>
+          <button><Search size={24} /></button>
+          <button><Plus size={26} strokeWidth={2.5} /></button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 py-2">
+          <div className="flex items-center justify-between mb-4">
+             <h1 className="text-4xl font-bold text-black" style={{ letterSpacing: '-0.03em' }}>
+               {new Intl.DateTimeFormat('en-US', { month: 'long' }).format(currentViewDate)}
+             </h1>
+             <div className="flex gap-2">
+                <button onClick={handlePrevMonth} className="p-2 text-gray-500 hover:text-black rounded-full hover:bg-gray-100"><ChevronLeft size={20}/></button>
+                <button onClick={handleNextMonth} className="p-2 text-gray-500 hover:text-black rounded-full hover:bg-gray-100"><ChevronRight size={20}/></button>
+             </div>
+          </div>
+          
+          <div className="grid grid-cols-7 gap-y-4 mb-2">
+            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, idx) => (
+              <div key={idx} className="text-center text-[10px] font-bold text-gray-400 uppercase">{day}</div>
+            ))}
+            
+            {daysArray.map((dateObj, idx) => {
+              if (!dateObj) return <div key={`empty-${idx}`} />;
+              
+              const isSelected = dateObj.toDateString() === selectedDate.toDateString();
+              const isToday = dateObj.toDateString() === new Date().toDateString();
+              const events = getEventsForDate(dateObj);
+              const hijriText = getHijriText(dateObj);
+              const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+
+              return (
+                <button 
+                  key={idx} 
+                  onClick={() => setSelectedDate(dateObj)}
+                  className="flex flex-col items-center justify-start h-[52px] relative group w-full"
+                >
+                  <div className={`w-10 h-10 flex flex-col items-center justify-center rounded-full transition-colors ${isSelected ? 'bg-black text-white' : isToday ? 'text-red-500' : isWeekend ? 'text-gray-400' : 'text-black'}`}>
+                    <span className="text-[20px] font-medium leading-none" style={{ letterSpacing: '-0.02em' }}>
+                      {dateObj.getDate()}
+                    </span>
+                    <span className={`text-[8.5px] mt-0.5 leading-none ${isSelected ? 'text-white/80' : 'text-gray-400 font-medium'}`} style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>
+                      {hijriText}
+                    </span>
+                  </div>
+                  {events.length > 0 && (
+                    <div className="flex gap-0.5 mt-0.5">
+                      {events.slice(0, 3).map((e, i) => (
+                        <div key={i} className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-gray-300' : e.isPrivate ? 'bg-red-400' : 'bg-gray-300'}`} />
+                      ))}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 bg-gray-50 min-h-[200px] p-4 pb-20">
+          {selectedDateEvents.length > 0 ? (
+            <div className="space-y-3">
+              {selectedDateEvents.map(e => (
+                <div key={e.id} className="flex items-start gap-3 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                  <div className="w-1 h-12 bg-red-400 rounded-full shrink-0" />
+                  <div className="flex-1">
+                    <h3 className="font-bold text-black text-[15px]">{e.content}</h3>
+                    {e.time && <p className="text-xs text-gray-500 mt-1 font-medium">{e.time}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+             <div className="text-center text-gray-400 mt-8 font-medium">No Events</div>
+          )}
+        </div>
+      </div>
+
+      <div className="absolute bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-gray-100 px-6 py-4 flex justify-between items-center pb-8">
+        <button onClick={() => { const d = new Date(); setCurrentViewDate(d); setSelectedDate(d); }} className="text-red-500 font-bold text-[17px]">Today</button>
+        <div className="flex gap-8 text-red-500">
+           <button><CalendarIcon size={24} strokeWidth={2}/></button>
+           <button><Book size={24} strokeWidth={2}/></button>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -163,6 +311,7 @@ export default function App() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Modals & Forms
+  const [isAppleCalendarOpen, setAppleCalendarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [newEntryText, setNewEntryText] = useState("");
@@ -914,7 +1063,7 @@ export default function App() {
           </div> 
           
           <label className="text-center cursor-pointer active:scale-95 transition-transform relative group z-[70] mx-2 flex flex-col items-center">
-            <input type="date" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" value={targetDateStr} onChange={(e) => handleJumpDate(e.target.value)} />
+            <button onClick={(e) => { e.stopPropagation(); setAppleCalendarOpen(true); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
             <h1 className="text-[20px] sm:text-2xl font-bold tracking-tight text-[#1A1A1A] group-hover:text-[#B28A5A] transition-colors">{formatDate(date)}</h1>
             <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mt-1 flex items-center justify-center gap-2 flex-wrap">
               <span className="text-[#B28A5A]">{getDayName(date)}</span>
@@ -980,7 +1129,7 @@ export default function App() {
 
   const DatePickerBadge = () => (
     <label className="cursor-pointer relative group flex items-center gap-1 border border-[#B28A5A]/30 rounded-lg px-2 py-1 bg-white/50" onPointerDown={(e) => e.stopPropagation()}>
-        <input type="date" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" value={toLocalISODate(currentDate)} onChange={(e) => handleJumpDate(e.target.value)} />
+        <button onClick={(e) => { e.stopPropagation(); setAppleCalendarOpen(true); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-50" />
         <CalendarIcon size={12} className="text-[#B28A5A]"/>
         <span className="text-xs font-bold text-[#B28A5A] group-hover:text-[#3A2E25] transition-colors">{formatDate(currentDate)}</span>
     </label>
@@ -2206,6 +2355,18 @@ export default function App() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isAppleCalendarOpen && (
+          <AppleCalendarModal 
+            isOpen={isAppleCalendarOpen} 
+            onClose={() => setAppleCalendarOpen(false)} 
+            initialDate={currentDate} 
+            allData={allData} 
+            onDateSelect={(d) => handleJumpDate(toLocalISODate(d))} 
+          />
         )}
       </AnimatePresence>
 
