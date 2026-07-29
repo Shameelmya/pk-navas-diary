@@ -220,7 +220,7 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
           <ChevronLeft size={28} strokeWidth={2.5} className="-ml-2" />
           <span>{selectedDate.getFullYear()}</span>
         </button>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5 sm:gap-6">
           <button 
             onPointerDown={() => { window.modeSwitchTimer = setTimeout(onToggleMode, 1500); }} 
             onPointerUp={() => clearTimeout(window.modeSwitchTimer)} 
@@ -298,7 +298,7 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
                 let bgColor = 'bg-emerald-50/70';
                 let barColor = 'bg-emerald-400';
 
-                if (e.type === 'event') {
+                if (e.type === 'event' || e.isEvent) {
                   bgColor = 'bg-purple-50/70';
                   barColor = 'bg-purple-400';
                 } else if (e.type === 'reminder') {
@@ -2188,7 +2188,7 @@ export default function App() {
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] to-black opacity-90"/>
 
       <AnimatePresence>
-        {(loginRole === 'main' || loginRole === 'sub') && !activePanel && (
+        {(loginRole === 'main' || loginRole === 'sub') && !activePanel && viewMode === 'diary' && (
           <motion.button 
             initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} 
             onClick={() => {
@@ -2222,7 +2222,7 @@ export default function App() {
                 </AnimatePresence>
               </div>
 
-              {renderFooter()}
+              {viewMode === 'diary' && renderFooter()}
               <AnimatePresence>
                 {activePanel === 'reading' && <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="absolute inset-0 z-[54]"><div className="absolute inset-0 bg-black/40" onClick={()=>setActivePanel(null)}/><ReadingPanel /></motion.div>}
                 {activePanel === 'todo' && <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="absolute inset-0 z-[54]"><div className="absolute inset-0 bg-black/40" onClick={()=>setActivePanel(null)}/><TodoPanel /></motion.div>}
