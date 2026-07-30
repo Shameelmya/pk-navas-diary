@@ -245,7 +245,7 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
           ><Menu size={22} /></button>
           <button onClick={() => { const d = new Date(); setCurrentViewDate(d); setSelectedDate(d); }} className="text-red-500 font-bold text-[17px]">Today</button>
           <button onClick={onViewReminders} className="text-black hover:text-gray-600"><Bell size={22} /></button>
-          <button onClick={onAddEntry} className="text-black hover:text-gray-600"><Plus size={28} strokeWidth={2.5} /></button>
+          <button onClick={() => onAddEntry(selectedDate)} className="text-black hover:text-gray-600"><Plus size={28} strokeWidth={2.5} /></button>
         </div>
       </div>
 
@@ -304,35 +304,62 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
 
         <div className="border-t border-gray-100 bg-gray-50 min-h-[200px] p-4 pb-20">
           {selectedDateEvents.length > 0 ? (
-            <div className="space-y-3">
-              {selectedDateEvents.map(e => {
-                const timeStr = e.time ? e.time.toLowerCase() : '';
-                const isAM = timeStr.includes('am');
-                const isPM = timeStr.includes('pm');
-                
-                let bgColor = 'bg-emerald-50/70';
-                let barColor = 'bg-emerald-400';
+            <div className="space-y-6">
+              {(() => {
+                const renderEventCard = (e, isSpecialEvent) => {
+                  const timeStr = e.time ? e.time.toLowerCase() : '';
+                  const isAM = timeStr.includes('am');
+                  const isPM = timeStr.includes('pm');
+                  
+                  let bgColor = 'bg-emerald-50/70';
+                  let barColor = 'bg-emerald-400';
+                  let titleColor = 'text-black';
+                  let timeColor = 'text-gray-500';
 
-                if (e.type === 'event' || e.isEvent) {
-                  bgColor = 'bg-purple-50/70';
-                  barColor = 'bg-purple-400';
-                } else if (e.type === 'reminder') {
-                  bgColor = 'bg-pink-50/70';
-                  barColor = 'bg-pink-400';
-                } else {
-                  if (isAM) { bgColor = 'bg-blue-50/70'; barColor = 'bg-blue-400'; }
-                  else if (isPM) { bgColor = 'bg-orange-50/70'; barColor = 'bg-orange-400'; }
-                }
-                return (
-                  <div key={e.id} className={`flex items-start gap-3 p-3 rounded-xl border border-gray-100 shadow-sm ${bgColor}`}>
-                    <div className={`w-1 h-12 rounded-full shrink-0 ${barColor}`} />
-                    <div className="flex-1">
-                      <h3 className="font-bold text-black text-[15px]">{e.content}</h3>
-                      {e.time && <p className="text-xs text-gray-500 mt-1 font-medium">{e.time}</p>}
+                  if (isSpecialEvent) {
+                    bgColor = 'bg-purple-600 shadow-md border-purple-700/50';
+                    barColor = 'bg-purple-300';
+                    titleColor = 'text-white';
+                    timeColor = 'text-white/80';
+                  } else if (e.type === 'reminder') {
+                    bgColor = 'bg-pink-50/70';
+                    barColor = 'bg-pink-400';
+                  } else {
+                    if (isAM) { bgColor = 'bg-blue-50/70'; barColor = 'bg-blue-400'; }
+                    else if (isPM) { bgColor = 'bg-orange-50/70'; barColor = 'bg-orange-400'; }
+                  }
+                  return (
+                    <div key={e.id} className={`flex items-start gap-3 p-3 rounded-xl border border-gray-100 shadow-sm ${bgColor}`}>
+                      <div className={`w-1 h-12 rounded-full shrink-0 ${barColor}`} />
+                      <div className="flex-1">
+                        <h3 className={`font-bold text-[15px] ${titleColor}`}>{e.content}</h3>
+                        {e.time && <p className={`text-xs mt-1 font-medium ${timeColor}`}>{e.time}</p>}
+                      </div>
                     </div>
-                  </div>
+                  );
+                };
+                
+                const regularEvents = selectedDateEvents.filter(e => e.type !== 'event' && !e.isEvent);
+                const specialEvents = selectedDateEvents.filter(e => e.type === 'event' || e.isEvent);
+                
+                return (
+                  <>
+                    {regularEvents.length > 0 && (
+                      <div className="space-y-3">
+                        {regularEvents.map(e => renderEventCard(e, false))}
+                      </div>
+                    )}
+                    {specialEvents.length > 0 && (
+                      <div>
+                        <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-3 pl-1">Events</h4>
+                        <div className="space-y-3">
+                          {specialEvents.map(e => renderEventCard(e, true))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 );
-              })}
+              })()}
             </div>
           ) : (
              <div className="text-center text-gray-400 mt-8 font-medium">No Events</div>
@@ -645,7 +672,7 @@ export default function App() {
     setEntryEndHour(endH); setEntryEndMinute(endM); setEntryEndAmPm(endAmPm);
   };
 
-  const handleOpenModal = (entryToEdit = null) => {
+  const handleOpenModal = (entryToEdit = null, specificDate = null) => {
     if (entryToEdit) {
       const d = new Date(entryToEdit.timestamp || entryToEdit.startDateStr);
       setEntryDate(toLocalISODate(d));
@@ -678,7 +705,7 @@ export default function App() {
       setEntryIsEvent(entryToEdit.isEvent || false);
       setPsTimeSlot(entryToEdit.time || "10:00 AM - 11:30 AM");
     } else {
-      setEntryDate(toLocalISODate(currentDate));
+      setEntryDate(specificDate ? toLocalISODate(specificDate) : toLocalISODate(currentDate));
       const now = new Date();
       let h = now.getHours(); const m = now.getMinutes();
       const ampm = h >= 12 ? 'PM' : 'AM';
@@ -2427,7 +2454,7 @@ export default function App() {
             initialDate={currentDate} 
             allData={allData} 
             onDateSelect={(d) => handleJumpDate(toLocalISODate(d))} 
-            onAddEntry={() => setIsModalOpen(true)}
+            onAddEntry={(dateObj) => handleOpenModal(null, dateObj)}
             onViewReminders={() => setShowRemindersModal(true)}
             footerComponent={() => renderFooter(true)}
             onToggleMode={() => { setViewMode('diary'); localStorage.setItem('diary_view_mode', 'diary'); }}
