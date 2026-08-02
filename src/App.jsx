@@ -148,9 +148,20 @@ const LeatherTexture = () => (
     <rect width="100%" height="100%" filter="url(#leatherNoise)"/>
   </svg>
 );
-const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelect, onAddEntry, onViewReminders, footerComponent, onToggleMode }) => {
+const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelect, onAddEntry, onViewReminders, footerComponent, onToggleMode, activeEntryMenu, setActiveEntryMenu, loginRole, saveToFirebase, handleOpenModal, handleDelete }) => {
   const [currentViewDate, setCurrentViewDate] = useState(initialDate || new Date());
   const [selectedDate, setSelectedDate] = useState(initialDate || new Date());
+  const holdTimer = useRef(null);
+
+  const handlePointerDown = (e, id) => {
+    if (loginRole === 'sub2') return; 
+    if (e.target.closest('button') || e.target.closest('a') || e.target.closest('input') || e.target.closest('select')) return;
+    if (activeEntryMenu === id) return;
+    holdTimer.current = setTimeout(() => {
+      setActiveEntryMenu(id);
+      if (window.navigator && window.navigator.vibrate) window.navigator.vibrate(50);
+    }, 500);
+  };
   
   useEffect(() => {
     if (isOpen && initialDate) {
@@ -214,6 +225,7 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
       className="fixed inset-0 bg-white z-[40] flex flex-col pb-[64px]"
       style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
+      onClick={() => setActiveEntryMenu && setActiveEntryMenu(null)}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <div className="relative flex items-center">
@@ -329,12 +341,41 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
                     else if (isPM) { bgColor = 'bg-orange-50/70'; barColor = 'bg-orange-400'; }
                   }
                   return (
-                    <div key={e.id} className={`flex items-start gap-3 p-3 rounded-xl border border-gray-100 shadow-sm ${bgColor}`}>
+                    <div 
+                      key={e.id} 
+                      className={`relative flex items-start gap-3 p-3 rounded-xl border border-gray-100 shadow-sm ${bgColor} ${e.completed ? 'opacity-50 grayscale' : ''}`}
+                      onPointerDown={(evt) => handlePointerDown(evt, e.id)}
+                      onPointerUp={() => clearTimeout(holdTimer.current)}
+                      onPointerLeave={() => clearTimeout(holdTimer.current)}
+                      onPointerCancel={() => clearTimeout(holdTimer.current)}
+                    >
                       <div className={`w-1 h-12 rounded-full shrink-0 ${barColor}`} />
                       <div className="flex-1">
-                        <h3 className={`font-bold text-[15px] ${titleColor}`}>{e.content}</h3>
-                        {e.time && <p className={`text-xs mt-1 font-medium ${timeColor}`}>{e.time}</p>}
+                        <h3 className={`font-bold text-[15px] ${titleColor} ${e.completed ? 'line-through' : ''}`}>{e.content}</h3>
+                        {e.time && <p className={`text-xs mt-1 font-medium ${timeColor} ${e.completed ? 'line-through' : ''}`}>{e.time}</p>}
                       </div>
+                      
+                      <AnimatePresence>
+                        {activeEntryMenu === e.id && (loginRole === 'main' || loginRole === 'sub') && (
+                          <motion.div initial={{ opacity: 0, y: -5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute top-[28px] left-0 bg-white/95 backdrop-blur-md shadow-lg rounded-xl flex items-center gap-1 p-1 z-[80] border border-black/5" onPointerDown={(evt) => evt.stopPropagation()}>
+                            {loginRole === 'main' && (
+                              <>
+                                <button onClick={(evt) => { evt.stopPropagation(); saveToFirebase(e.id, { ...e, completed: !e.completed }); setActiveEntryMenu(null); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
+                                  <CheckCircle size={22} className={e.completed ? 'fill-green-500 text-white' : ''} />
+                                </button>
+                                <div className="w-px h-6 bg-black/10 mx-0.5" />
+                              </>
+                            )}
+                            <button onClick={(evt) => { evt.stopPropagation(); setActiveEntryMenu(null); handleOpenModal(e); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
+                              <Edit2 size={20} />
+                            </button>
+                            <div className="w-px h-6 bg-black/10 mx-0.5" />
+                            <button onClick={(evt) => { evt.stopPropagation(); setActiveEntryMenu(null); handleDelete(e.id, toLocalISODate(selectedDate)); }} className="p-2.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors active:scale-90">
+                              <Trash2 size={20} />
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   );
                 };
@@ -2458,6 +2499,12 @@ export default function App() {
             onViewReminders={() => setShowRemindersModal(true)}
             footerComponent={() => renderFooter(true)}
             onToggleMode={() => { setViewMode('diary'); localStorage.setItem('diary_view_mode', 'diary'); }}
+            activeEntryMenu={activeEntryMenu}
+            setActiveEntryMenu={setActiveEntryMenu}
+            loginRole={loginRole}
+            saveToFirebase={saveToFirebase}
+            handleOpenModal={handleOpenModal}
+            handleDelete={handleDelete}
           />
         )}
       </AnimatePresence>
