@@ -348,6 +348,11 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
                       onPointerUp={() => clearTimeout(holdTimer.current)}
                       onPointerLeave={() => clearTimeout(holdTimer.current)}
                       onPointerCancel={() => clearTimeout(holdTimer.current)}
+                      onClick={(evt) => {
+                        if (activeEntryMenu === e.id) {
+                          evt.stopPropagation();
+                        }
+                      }}
                     >
                       <div className={`w-1 h-12 rounded-full shrink-0 ${barColor}`} />
                       <div className="flex-1">
