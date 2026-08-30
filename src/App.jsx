@@ -1173,7 +1173,7 @@ export default function App() {
               </>
             )}
             
-            {loginRole === 'sub' && (
+            {(loginRole === 'sub' || loginRole === 'sub2') && (
               <>
                 <button onClick={(e) => { e.stopPropagation(); setShowLogoutConfirm(true); }} className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full transition-colors active:scale-90 relative" title="Sign Out">
                    <LogOut size={20} />
@@ -1187,12 +1187,6 @@ export default function App() {
                   )}
                 </button>
               </>
-            )}
-
-            {loginRole === 'sub2' && (
-              <button onClick={(e) => { e.stopPropagation(); setShowLogoutConfirm(true); }} className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full transition-colors active:scale-90 relative" title="Sign Out">
-                 <LogOut size={20} />
-              </button>
             )}
           </div> 
           
