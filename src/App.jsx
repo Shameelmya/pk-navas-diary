@@ -773,6 +773,7 @@ export default function App() {
 
   const handleSaveEntry = async () => {
     if (!newEntryText.trim() || !entryDate) return;
+    if (entryType === 'diary' && !entryPhone.trim()) return;
     
     const [year, month, day] = entryDate.split('-').map(Number);
     let entryDateTime, endDateTime, finalTimeStr;
@@ -2222,9 +2223,10 @@ export default function App() {
 
             <textarea ref={entryTextRef} className="w-full flex-1 min-h-[120px] bg-transparent outline-none resize-none text-[20px] leading-[32px] m-0 pt-[4px]" style={{ fontFamily: entryType === 'note' ? "'Comic Neue', 'A10', 'Chilanka', cursive" : "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600, color: COLORS.ink, backgroundImage: entryType==='note'?'none':`repeating-linear-gradient(transparent, transparent 31px, rgba(178, 138, 90, 0.2) 31px, rgba(178, 138, 90, 0.2) 32px)`, backgroundPosition: '0 0', backgroundAttachment: 'local' }} value={newEntryText} onChange={(e) => setNewEntryText(e.target.value)} placeholder={entryType === 'reminder' ? "What do you need to remember?" : entryType === 'note' ? "Write a permanent note..." : "Dear Diary..."} />
             
-            <div className="mt-4 flex items-center gap-3 border-b border-black/10 pb-2 shrink-0">
-              <Phone size={18} className="text-black/30" />
-              <input type="tel" placeholder="Phone Number (Optional)" value={entryPhone} onChange={(e) => setEntryPhone(e.target.value)} className="bg-transparent outline-none text-[15px] w-full placeholder:text-black/30 text-[#1A1A1A]" />
+            <div className={`mt-4 flex items-center gap-3 border-b pb-2 shrink-0 ${entryType === 'diary' && !entryPhone.trim() ? 'border-red-300' : 'border-black/10'}`}>
+              <Phone size={18} className={entryType === 'diary' && !entryPhone.trim() ? 'text-red-400' : 'text-black/30'} />
+              <input type="tel" placeholder={entryType === 'diary' ? 'Phone Number (Required) *' : 'Phone Number (Optional)'} value={entryPhone} onChange={(e) => setEntryPhone(e.target.value)} className="bg-transparent outline-none text-[15px] w-full placeholder:text-black/30 text-[#1A1A1A]" />
+              {entryType === 'diary' && !entryPhone.trim() && <span className="text-red-400 text-[11px] font-bold shrink-0">Required</span>}
             </div>
             
             {entryType === 'reminder' && (
@@ -2256,7 +2258,7 @@ export default function App() {
                 </button>
               )}
             </div>
-            <button onClick={handleSaveEntry} disabled={!newEntryText.trim() || (entryType!=='note' && !entryDate)} className="px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all disabled:opacity-50 text-white shadow-lg shadow-[#B28A5A]/20 hover:scale-[1.02] active:scale-95 text-[13px] sm:text-[14px]" style={{ backgroundColor: COLORS.accent }}>
+            <button onClick={handleSaveEntry} disabled={!newEntryText.trim() || (entryType!=='note' && !entryDate) || (entryType==='diary' && !entryPhone.trim())} className="px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-all disabled:opacity-50 text-white shadow-lg shadow-[#B28A5A]/20 hover:scale-[1.02] active:scale-95 text-[13px] sm:text-[14px]" style={{ backgroundColor: COLORS.accent }}>
               <Check size={18} /> {editingEntryId ? "UPDATE" : "SAVE"}
             </button>
           </div>
