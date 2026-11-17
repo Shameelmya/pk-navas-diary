@@ -2524,6 +2524,7 @@ export default function App() {
               {viewMode === 'diary' && renderFooter()}
               {viewMode === 'diary' && loginRole === 'note' && (
                 <div className="absolute bottom-0 left-0 right-0 h-[64px] bg-[#F7F3EA] border-t border-[#B28A5A]/20 flex items-center justify-around px-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+                  <button onClick={() => setActivePanel(p => p === 'todo' ? null : 'todo')} className={`p-3 transition-colors ${activePanel === 'todo' ? 'text-[#B28A5A]' : 'text-black/40 hover:text-[#3A2E25]'}`} title="To-Do List"><ListTodo size={22} /></button>
                   <button onClick={() => { if (activePanel !== 'note') { window.history.pushState(null, '', '#notes'); setActivePanel('note'); } else { window.history.back(); } }} className={`p-3 transition-colors ${activePanel === 'note' ? 'text-[#B28A5A]' : 'text-black/40 hover:text-[#3A2E25]'}`} title="Notes"><StickyNote size={22} /></button>
                 </div>
               )}
