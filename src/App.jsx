@@ -533,6 +533,7 @@ export default function App() {
       if (savedRole === 'main') setLoginRole('main');
       else if (savedRole === 'sub') setLoginRole('sub');
       else if (savedRole === 'sub2') setLoginRole('sub2');
+      else if (savedRole === 'note') setLoginRole('note');
 
     }, (error) => console.error("Firestore loading error:", error));
 
@@ -577,6 +578,10 @@ export default function App() {
       playFlipSound();
     } else if (loginModal.role === 'sub2' && (password === appConfig.ps2Password || password === 'ad@diary')) {
       setLoginRole('sub2'); localStorage.setItem('diary_role', 'sub2');
+      setLoginModal({ isOpen: false, role: null }); setPassword(""); setLoginError(false);
+      playFlipSound();
+    } else if (loginModal.role === 'note' && password === 'Note@diary') {
+      setLoginRole('note'); localStorage.setItem('diary_role', 'note');
       setLoginModal({ isOpen: false, role: null }); setPassword(""); setLoginError(false);
       playFlipSound();
     } else {
@@ -891,7 +896,7 @@ export default function App() {
   };
 
   const handlePointerDown = (e, id) => {
-    if (loginRole === 'sub2') return; 
+    if (loginRole === 'sub2' || loginRole === 'note') return; 
     if (e.target.closest('button') || e.target.closest('a') || e.target.closest('input') || e.target.closest('select')) return;
     if (activeEntryMenu === id) return;
     holdTimer.current = setTimeout(() => {
@@ -964,6 +969,11 @@ export default function App() {
           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-[#b09b85]/30 bg-black/30 flex items-center justify-center group-hover:bg-black/50 shadow-lg backdrop-blur-sm"><Users size={24} className="sm:w-7 sm:h-7" /></div>
           <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase opacity-80" style={{fontFamily: "'Sora', sans-serif"}}>PS 2</span>
         </button>
+
+        <button onClick={() => setLoginModal({ isOpen: true, role: 'note' })} className="flex flex-col items-center gap-2 text-[#8aaa8a] hover:text-[#a8c8a8] transition-colors active:scale-95 group">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border border-[#8aaa8a]/30 bg-black/30 flex items-center justify-center group-hover:bg-black/50 shadow-lg backdrop-blur-sm"><StickyNote size={24} className="sm:w-7 sm:h-7" /></div>
+          <span className="text-[10px] sm:text-xs font-bold tracking-widest uppercase opacity-80" style={{fontFamily: "'Sora', sans-serif"}}>Note</span>
+        </button>
       </div>
 
       <AnimatePresence>
@@ -974,7 +984,7 @@ export default function App() {
               
               <div className="flex flex-col items-center gap-4 text-center">
                 <div className="w-12 h-12 rounded-full bg-[#d4af37]/10 flex items-center justify-center text-[#d4af37]"><Lock size={24} /></div>
-                <h3 className="text-[#d4af37] font-serif text-xl" style={{ fontFamily: "'Berkshire Swash', cursive" }}>{loginModal.role === 'main' ? 'MLA Access' : loginModal.role === 'sub' ? 'PS Access' : 'PS 2 Access'}</h3>
+                <h3 className="text-[#d4af37] font-serif text-xl" style={{ fontFamily: "'Berkshire Swash', cursive" }}>{loginModal.role === 'main' ? 'MLA Access' : loginModal.role === 'sub' ? 'PS Access' : loginModal.role === 'sub2' ? 'PS 2 Access' : 'Note Access'}</h3>
                 
                 <form onSubmit={handleLoginSubmit} className="w-full flex flex-col gap-3 mt-2">
                   <input 
@@ -1175,7 +1185,7 @@ export default function App() {
               </>
             )}
             
-            {(loginRole === 'sub' || loginRole === 'sub2') && (
+            {(loginRole === 'sub' || loginRole === 'sub2' || loginRole === 'note') && (
               <>
                 <button onClick={(e) => { e.stopPropagation(); setShowLogoutConfirm(true); }} className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full transition-colors active:scale-90 relative" title="Sign Out">
                    <LogOut size={20} />
@@ -1312,7 +1322,8 @@ export default function App() {
       return {
         status: 'active', dailyTarget, remPages: Math.max(0, remPages),
         pagesReadToday, totalRead: totalReadIncToday, aheadBehind,
-        readToday: book.progress?.[readingDateStr] || '', remDays: Math.max(0, remDays)
+        readToday: book.progress?.[readingDateStr] || '', remDays: Math.max(0, remDays),
+        daysPassed: daysPassed + 1  // Day 1 = start date itself
       };
     };
 
@@ -1354,10 +1365,13 @@ export default function App() {
             const isAhead = stats.aheadBehind >= 0;
             return (
               <div key={book.id} className="bg-white/70 border border-[#B28A5A]/30 p-4 rounded-xl shadow-sm relative" onPointerDown={(e) => handlePointerDown(e, book.id)} onPointerUp={handlePointerUpOrLeave} onPointerLeave={handlePointerUpOrLeave}>
-                <div className="flex justify-between items-start mb-3">
+                <div className="flex justify-between items-start mb-1">
                   <h4 className="text-[#1A1A1A] text-[16px] leading-tight flex-1 pr-2" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600 }}>{book.title}</h4>
                   {stats.status === 'active' && <span className="text-xs bg-[#B28A5A] text-white px-2 py-1 rounded-lg font-bold shrink-0">{stats.dailyTarget} pgs/day</span>}
                 </div>
+                {stats.status === 'active' && (
+                  <p className="text-[11px] text-black/40 font-medium mb-3">Day {stats.daysPassed} of {book.targetDays} days · Started {formatDate(new Date(book.startDateStr))}</p>
+                )}
                 {stats.status === 'active' ? (
                   <>
                     {/* Stats cards */}
@@ -2473,7 +2487,7 @@ export default function App() {
       <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a1a] to-black opacity-90"/>
 
       <AnimatePresence>
-        {(loginRole === 'main' || loginRole === 'sub') && !activePanel && viewMode === 'diary' && (
+        {(loginRole === 'main' || loginRole === 'sub' || loginRole === 'note') && !activePanel && viewMode === 'diary' && (
           <motion.button 
             initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0, opacity: 0 }} 
             onClick={() => {
@@ -2508,6 +2522,11 @@ export default function App() {
               </div>
 
               {viewMode === 'diary' && renderFooter()}
+              {viewMode === 'diary' && loginRole === 'note' && (
+                <div className="absolute bottom-0 left-0 right-0 h-[64px] bg-[#F7F3EA] border-t border-[#B28A5A]/20 flex items-center justify-around px-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+                  <button onClick={() => { if (activePanel !== 'note') { window.history.pushState(null, '', '#notes'); setActivePanel('note'); } else { window.history.back(); } }} className={`p-3 transition-colors ${activePanel === 'note' ? 'text-[#B28A5A]' : 'text-black/40 hover:text-[#3A2E25]'}`} title="Notes"><StickyNote size={22} /></button>
+                </div>
+              )}
               <AnimatePresence>
                 {activePanel === 'reading' && <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="absolute inset-0 z-[54]"><div className="absolute inset-0 bg-black/40" onClick={()=>setActivePanel(null)}/><ReadingPanel /></motion.div>}
                 {activePanel === 'todo' && <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="absolute inset-0 z-[54]"><div className="absolute inset-0 bg-black/40" onClick={()=>setActivePanel(null)}/><TodoPanel /></motion.div>}
