@@ -5,7 +5,8 @@ import {
   Edit2, Trash2, CheckCircle, Clock, Crown, User, Users, Lock, BookOpen, 
   Target, Settings, Download, Upload, Trash, LogOut, 
   StickyNote, Ban, Search, AlertCircle, ListTodo, CalendarCheck,
-  History, Menu, FolderPlus, Folder, MoreVertical, Home, ChevronRight, ChevronLeft, FileText
+  History, Menu, FolderPlus, Folder, MoreVertical, Home, ChevronRight, ChevronLeft, FileText,
+  CheckSquare, Square, AlignLeft
 } from 'lucide-react';
 
 import { initializeApp } from 'firebase/app';
@@ -1267,65 +1268,126 @@ export default function App() {
   const ReadingPanel = () => {
     const [showAdd, setShowAdd] = useState(false);
     const [newBook, setNewBook] = useState({ title: '', totalPages: '', targetDays: '' });
-    const todayStr = toLocalISODate(currentDate);
+    const [readingDate, setReadingDate] = useState(currentDate);
+    const readingDateStr = toLocalISODate(readingDate);
     const books = allData.filter(e => e.type === 'book');
+    const isReadingToday = readingDateStr === toLocalISODate(new Date());
+
+    const shiftReadingDate = (days) => {
+      const d = new Date(readingDate);
+      d.setDate(d.getDate() + days);
+      setReadingDate(d);
+    };
 
     const handleAddBook = async (e) => {
       e.preventDefault(); if (!newBook.title || !newBook.totalPages || !newBook.targetDays) return;
-      await saveToFirebase(generateId(), { type: 'book', title: newBook.title, totalPages: Number(newBook.totalPages), targetDays: Number(newBook.targetDays), startDateStr: todayStr, progress: {}, timestamp: Date.now() });
+      await saveToFirebase(generateId(), { type: 'book', title: newBook.title, totalPages: Number(newBook.totalPages), targetDays: Number(newBook.targetDays), startDateStr: readingDateStr, progress: {}, timestamp: Date.now() });
       setNewBook({ title: '', totalPages: '', targetDays: '' }); setShowAdd(false);
     };
 
     const handleLogPages = async (book, pages) => {
       const p = Number(pages); if (isNaN(p)) return;
-      await saveToFirebase(book.id, { ...book, progress: { ...(book.progress || {}), [todayStr]: p } });
+      await saveToFirebase(book.id, { ...book, progress: { ...(book.progress || {}), [readingDateStr]: p } });
     };
 
     const getStats = (book) => {
-      let readBefore = 0; let daysPassed = 0;
+      let totalReadBefore = 0; let daysPassed = 0;
       const start = new Date(book.startDateStr); start.setHours(0,0,0,0);
-      const target = new Date(todayStr); target.setHours(0,0,0,0);
+      const target = new Date(readingDateStr); target.setHours(0,0,0,0);
       if (target < start) return { status: 'pending' };
       const loop = new Date(start);
       while(loop < target) {
-        if (book.progress?.[toLocalISODate(loop)]) readBefore += book.progress[toLocalISODate(loop)];
+        if (book.progress?.[toLocalISODate(loop)]) totalReadBefore += book.progress[toLocalISODate(loop)];
         daysPassed++; loop.setDate(loop.getDate() + 1);
       }
-      const remPages = book.totalPages - readBefore;
+      const pagesReadToday = Number(book.progress?.[readingDateStr] || 0);
+      const totalReadIncToday = totalReadBefore + pagesReadToday;
+      const remPages = book.totalPages - totalReadIncToday;
       const remDays = book.targetDays - daysPassed;
-      if (remPages <= 0 && !book.progress?.[todayStr]) return { status: 'completed' };
+      if (remPages <= 0 && pagesReadToday === 0 && totalReadBefore >= book.totalPages) return { status: 'completed' };
+      // Pages scheduled to be completed by end of today
+      const scheduledByToday = Math.min(book.totalPages, Math.ceil(book.totalPages * (daysPassed + 1) / book.targetDays));
+      const aheadBehind = totalReadIncToday - scheduledByToday;
       let dailyTarget = remPages > 0 ? (remDays > 0 ? Math.ceil(remPages / remDays) : remPages) : 0;
-      return { status: 'active', dailyTarget, remPages, readToday: book.progress?.[todayStr] || '' };
+      return {
+        status: 'active', dailyTarget, remPages: Math.max(0, remPages),
+        pagesReadToday, totalRead: totalReadIncToday, aheadBehind,
+        readToday: book.progress?.[readingDateStr] || '', remDays: Math.max(0, remDays)
+      };
     };
 
     return (
-      <div className="absolute inset-x-0 bottom-[64px] h-[60%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="absolute inset-x-0 bottom-[64px] h-[65%] bg-[#F7F3EA] z-[55] rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.3)] flex flex-col border-t border-[#B28A5A]/30" onPointerDown={(e) => e.stopPropagation()}>
         <PaperTexture />
         <div className="p-4 border-b border-[#B28A5A]/20 flex justify-between items-center relative z-10 bg-[#EAE3D2]/80 backdrop-blur-sm rounded-t-3xl">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <h3 className="font-bold text-[#3A2E25] flex items-center gap-2"><BookOpen size={18}/> Reading</h3>
             <div className="h-4 w-px bg-[#B28A5A]/30" />
-            <DatePickerBadge />
+            {/* Date navigator with arrows */}
+            <div className="flex items-center gap-0.5 border border-[#B28A5A]/30 rounded-lg bg-white/50" onPointerDown={(e) => e.stopPropagation()}>
+              <button onClick={() => shiftReadingDate(-1)} className="p-1.5 text-[#B28A5A] hover:bg-black/5 rounded-l-lg active:scale-90 transition-transform"><ChevronLeft size={14}/></button>
+              <span className="text-xs font-bold text-[#B28A5A] px-1 min-w-[52px] text-center">{isReadingToday ? 'Today' : formatDate(readingDate)}</span>
+              <button onClick={() => shiftReadingDate(1)} className="p-1.5 text-[#B28A5A] hover:bg-black/5 rounded-r-lg active:scale-90 transition-transform"><ChevronRight size={14}/></button>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <button onClick={() => setShowAdd(true)} className="p-2 text-[#B28A5A] hover:bg-black/5 rounded-full"><Plus size={22}/></button>
             <div className="w-px h-6 bg-black/10"/>
             <button onClick={() => setActivePanel(null)} className="p-2 text-black/50 hover:text-black rounded-full"><X size={20}/></button>
           </div>
         </div>
+
         <div className="flex-1 overflow-y-auto p-4 relative z-10 space-y-4">
+          {books.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-[70%] gap-3 text-center px-6">
+              <BookOpen size={52} className="text-[#B28A5A]/40" />
+              <p className="text-[#3A2E25] font-bold text-lg" style={{ fontFamily: "'Comic Neue', cursive" }}>Today's reader is tomorrow's leader</p>
+              <p className="text-black/40 text-sm font-medium italic">Pick a book and start reading!</p>
+              <button onClick={() => setShowAdd(true)} className="mt-2 px-6 py-3 bg-[#B28A5A] text-white rounded-xl font-bold shadow-lg active:scale-95 transition-transform flex items-center gap-2">
+                <Plus size={18}/> Add a Book
+              </button>
+            </div>
+          )}
           {books.map(book => {
-            const stats = getStats(book); if (stats.status === 'completed') return null;
+            const stats = getStats(book);
+            if (stats.status === 'completed') return null;
+            const isAhead = stats.aheadBehind >= 0;
             return (
-              <div key={book.id} className="bg-white/60 border border-[#B28A5A]/30 p-4 rounded-xl shadow-sm relative" onPointerDown={(e) => handlePointerDown(e, book.id)} onPointerUp={handlePointerUpOrLeave} onPointerLeave={handlePointerUpOrLeave}>
-                <div className="flex justify-between items-start mb-2">
-                  <h4 className="text-[#1A1A1A] text-[18px] leading-tight" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600 }}>{book.title}</h4>
-                  {stats.status === 'active' && <span className="text-xs bg-[#B28A5A] text-white px-2 py-1 rounded font-bold ml-2 shrink-0">Target: {stats.dailyTarget} pgs</span>}
+              <div key={book.id} className="bg-white/70 border border-[#B28A5A]/30 p-4 rounded-xl shadow-sm relative" onPointerDown={(e) => handlePointerDown(e, book.id)} onPointerUp={handlePointerUpOrLeave} onPointerLeave={handlePointerUpOrLeave}>
+                <div className="flex justify-between items-start mb-3">
+                  <h4 className="text-[#1A1A1A] text-[16px] leading-tight flex-1 pr-2" style={{ fontFamily: "'Comic Neue', 'A10', 'Chilanka', cursive", fontWeight: 600 }}>{book.title}</h4>
+                  {stats.status === 'active' && <span className="text-xs bg-[#B28A5A] text-white px-2 py-1 rounded-lg font-bold shrink-0">{stats.dailyTarget} pgs/day</span>}
                 </div>
                 {stats.status === 'active' ? (
-                  <div className="flex items-center gap-2 mt-3">
-                    <input type="number" placeholder="Pages read today" value={stats.readToday} onChange={(e) => handleLogPages(book, e.target.value)} className="flex-1 bg-transparent border-b border-black/20 outline-none px-1 py-1 text-sm font-medium" />
-                  </div>
+                  <>
+                    {/* Stats cards */}
+                    <div className="grid grid-cols-3 gap-2 mb-3">
+                      <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-2 text-center">
+                        <p className="text-emerald-700 font-bold text-xl leading-none">{stats.pagesReadToday}</p>
+                        <p className="text-emerald-600 text-[10px] font-semibold mt-0.5">Read Today</p>
+                      </div>
+                      <div className="bg-amber-50 border border-amber-100 rounded-xl p-2 text-center">
+                        <p className="text-amber-700 font-bold text-xl leading-none">{stats.remPages}</p>
+                        <p className="text-amber-600 text-[10px] font-semibold mt-0.5">Remaining</p>
+                      </div>
+                      <div className={`rounded-xl p-2 text-center border ${isAhead ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
+                        <p className={`font-bold text-xl leading-none ${isAhead ? 'text-blue-700' : 'text-red-700'}`}>{Math.abs(stats.aheadBehind)}</p>
+                        <p className={`text-[10px] font-semibold mt-0.5 ${isAhead ? 'text-blue-600' : 'text-red-600'}`}>{isAhead ? '🚀 Ahead' : '⚠️ Behind'}</p>
+                      </div>
+                    </div>
+                    {/* Status message */}
+                    {!isAhead && stats.aheadBehind < 0 && (
+                      <p className="text-red-500 text-xs font-medium mb-2 text-center bg-red-50 rounded-lg py-1.5">
+                        📖 Read {Math.abs(stats.aheadBehind)} more pages to catch up!
+                      </p>
+                    )}
+                    {isAhead && stats.aheadBehind > 0 && (
+                      <p className="text-blue-500 text-xs font-medium mb-2 text-center bg-blue-50 rounded-lg py-1.5">
+                        🎉 {stats.aheadBehind} pages ahead of schedule!
+                      </p>
+                    )}
+                    <input type="number" placeholder="Log pages read today..." value={stats.readToday} onChange={(e) => handleLogPages(book, e.target.value)} className="w-full bg-white/80 border border-black/10 rounded-xl outline-none px-3 py-2 text-sm font-medium" />
+                  </>
                 ) : <p className="text-xs text-black/40 italic mt-2">Starts on {formatDate(new Date(book.startDateStr))}</p>}
                 {activeEntryMenu === book.id && <button onClick={() => deleteFromFirebase(book.id)} className="absolute top-2 right-2 bg-red-100 text-red-600 p-1.5 rounded-lg shadow z-[60]"><Trash2 size={16}/></button>}
               </div>
@@ -1344,7 +1406,7 @@ export default function App() {
               <form onSubmit={handleAddBook} className="relative z-10 flex flex-col gap-4">
                 <input placeholder="Book Title" value={newBook.title} onChange={e => setNewBook(p => ({...p, title: e.target.value}))} className="bg-white/80 border border-black/10 rounded-xl px-4 py-3 outline-none focus:border-[#B28A5A]" />
                 <div className="flex gap-3">
-                  <input type="number" placeholder="Total Pgs" value={newBook.totalPages} onChange={e => setNewBook(p => ({...p, totalPages: e.target.value}))} className="flex-1 bg-white/80 border border-black/10 rounded-xl px-4 py-3 outline-none focus:border-[#B28A5A]" />
+                  <input type="number" placeholder="Total Pages" value={newBook.totalPages} onChange={e => setNewBook(p => ({...p, totalPages: e.target.value}))} className="flex-1 bg-white/80 border border-black/10 rounded-xl px-4 py-3 outline-none focus:border-[#B28A5A]" />
                   <input type="number" placeholder="Days Target" value={newBook.targetDays} onChange={e => setNewBook(p => ({...p, targetDays: e.target.value}))} className="flex-1 bg-white/80 border border-black/10 rounded-xl px-4 py-3 outline-none focus:border-[#B28A5A]" />
                 </div>
                 <button type="submit" className="bg-[#B28A5A] text-white py-3 rounded-xl font-bold mt-2 shadow-lg active:scale-95 transition-transform">Start Reading</button>
@@ -1620,7 +1682,10 @@ export default function App() {
     const notes = currentItems.filter(i => i.type === 'note');
 
     const handleAddNote = () => {
-      setActiveNote({ id: generateId(), type: 'note', parentId: currentNoteFolderId, title: '', content: '', timestamp: Date.now(), isNew: true });
+      setActiveNote({ id: generateId(), type: 'note', noteType: 'text', parentId: currentNoteFolderId, title: '', content: '', items: [], timestamp: Date.now(), isNew: true });
+    };
+    const handleAddChecklist = () => {
+      setActiveNote({ id: generateId(), type: 'note', noteType: 'checklist', parentId: currentNoteFolderId, title: '', content: '', items: [], timestamp: Date.now(), isNew: true });
     };
 
     const closeNotePanel = () => {
@@ -1648,19 +1713,25 @@ export default function App() {
     };
 
     if (activeNote) {
+      const handleNoteSave = async (updated) => {
+        await saveToFirebase(updated.id, {
+          type: 'note',
+          noteType: updated.noteType || 'text',
+          parentId: updated.parentId,
+          title: updated.title,
+          content: updated.content || '',
+          items: updated.items || [],
+          timestamp: updated.isNew ? Date.now() : updated.timestamp,
+        });
+      };
+      if (activeNote.noteType === 'checklist') {
+        return <ChecklistEditor note={activeNote} onSave={handleNoteSave} onClose={() => setActiveNote(null)} />;
+      }
       return (
         <NoteEditor 
           note={activeNote} 
           onClose={() => setActiveNote(null)} 
-          onSave={async (updated) => {
-            await saveToFirebase(updated.id, {
-               type: 'note',
-               parentId: updated.parentId,
-               title: updated.title,
-               content: updated.content,
-               timestamp: updated.isNew ? Date.now() : updated.timestamp,
-            });
-          }} 
+          onSave={handleNoteSave} 
         />
       );
     }
@@ -1794,7 +1865,7 @@ export default function App() {
              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
                 {notes.map(note => (
                    <div key={note.id} 
-                     className="bg-white rounded-[20px] p-3 pb-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] aspect-[4/4.5] relative select-none cursor-pointer active:scale-95 transition-transform flex flex-col border border-black/5"
+                     className={`rounded-[20px] p-3 pb-8 shadow-[0_2px_8px_rgba(0,0,0,0.04)] aspect-[4/4.5] relative select-none cursor-pointer active:scale-95 transition-transform flex flex-col border ${note.noteType === 'checklist' ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-black/5'}`}
                      onContextMenu={(e) => {
                        e.preventDefault();
                        setLongPressedItem(note);
@@ -1816,10 +1887,27 @@ export default function App() {
                      }}
                      onPointerLeave={(e) => clearTimeout(e.target.dataset.timer)}
                    >
-                      <h3 className="font-bold text-black text-xs line-clamp-1 mb-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{note.title || 'Untitled'}</h3>
-                      <p className="text-black/70 text-[10px] leading-relaxed line-clamp-4 overflow-hidden break-words" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>
-                        {note.content}
-                      </p>
+                      <div className="flex items-center gap-1 mb-1">
+                        {note.noteType === 'checklist' ? <CheckSquare size={10} className="text-emerald-500 shrink-0" /> : <AlignLeft size={10} className="text-black/30 shrink-0" />}
+                        <h3 className={`font-bold text-xs line-clamp-1 ${note.noteType === 'checklist' ? 'text-emerald-800' : 'text-black'}`} style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{note.title || 'Untitled'}</h3>
+                      </div>
+                      {note.noteType === 'checklist' ? (
+                        <div className="flex flex-col gap-0.5 overflow-hidden">
+                          {(note.items || []).slice(0, 5).map((item, i) => (
+                            <div key={i} className={`flex items-center gap-1 ${item.type === 'subtask' ? 'pl-2' : ''}`}>
+                              {item.type === 'heading' 
+                                ? <span className="text-[9px] font-bold text-emerald-700 line-clamp-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{item.text}</span>
+                                : <><div className={`w-2 h-2 rounded-sm border shrink-0 ${item.checked ? 'bg-emerald-500 border-emerald-500' : 'border-black/30'}`} /><span className={`text-[9px] line-clamp-1 ${item.checked ? 'line-through text-black/30' : 'text-black/70'}`} style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{item.text}</span></>
+                              }
+                            </div>
+                          ))}
+                          {(note.items || []).length > 5 && <p className="text-[8px] text-emerald-600/60">+{(note.items || []).length - 5} more</p>}
+                        </div>
+                      ) : (
+                        <p className="text-black/70 text-[10px] leading-relaxed line-clamp-4 overflow-hidden break-words" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>
+                          {note.content}
+                        </p>
+                      )}
                       <p className="text-[9px] text-black/30 absolute bottom-3 left-3">{(new Date(note.timestamp)).toLocaleDateString('en-GB', {day: 'numeric', month:'short'})}</p>
                    </div>
                 ))}
@@ -1834,10 +1922,15 @@ export default function App() {
            )}
         </div>
 
-        {/* FAB */}
-        <button onClick={handleAddNote} className="absolute right-6 bottom-24 w-14 h-14 bg-white border border-black/10 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.15)] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform z-30">
-          <Edit2 size={24} className="text-black" />
-        </button>
+        {/* FABs */}
+        <div className="absolute right-6 bottom-24 flex flex-col gap-3 z-30">
+          <button onClick={handleAddChecklist} className="w-12 h-12 bg-emerald-500 border border-emerald-400/50 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.15)] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform" title="New Checklist">
+            <CheckSquare size={20} className="text-white" />
+          </button>
+          <button onClick={handleAddNote} className="w-14 h-14 bg-white border border-black/10 rounded-full shadow-[0_4px_20px_rgba(0,0,0,0.15)] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform" title="New Note">
+            <Edit2 size={24} className="text-black" />
+          </button>
+        </div>
 
         {/* Minimal Context Menu (Dropdown) */}
         <AnimatePresence>
@@ -2031,6 +2124,114 @@ export default function App() {
                </div>
             )}
          </div>
+      </div>
+    );
+  };
+
+
+  const ChecklistEditor = ({ note, onSave, onClose }) => {
+    const [title, setTitle] = useState(note.title || '');
+    const [items, setItems] = useState(note.items || []);
+    const [addType, setAddType] = useState('task');
+    const [newText, setNewText] = useState('');
+    const inputRef = useRef(null);
+
+    const handleSaveAll = () => {
+      onSave({ ...note, title: title.trim() || 'Checklist', items, noteType: 'checklist', content: items.map(i => (i.checked ? '✓ ' : '• ') + i.text).join('\n') });
+      onClose();
+    };
+
+    const addItem = () => {
+      if (!newText.trim()) return;
+      setItems(prev => [...prev, { id: generateId(), type: addType, text: newText.trim(), checked: false }]);
+      setNewText('');
+      setTimeout(() => inputRef.current?.focus(), 50);
+    };
+
+    const toggleItem = (id) => setItems(prev => prev.map(item => item.id === id ? { ...item, checked: !item.checked } : item));
+    const deleteItem = (id) => setItems(prev => prev.filter(item => item.id !== id));
+    const moveItem = (id, dir) => {
+      const idx = items.findIndex(i => i.id === id);
+      if (idx < 0) return;
+      const newItems = [...items];
+      const target = idx + dir;
+      if (target < 0 || target >= newItems.length) return;
+      [newItems[idx], newItems[target]] = [newItems[target], newItems[idx]];
+      setItems(newItems);
+    };
+
+    const doneCount = items.filter(i => i.type !== 'heading' && i.checked).length;
+    const totalTasks = items.filter(i => i.type !== 'heading').length;
+
+    return (
+      <div className="absolute inset-0 bg-white z-[70] flex flex-col" onPointerDown={(e) => e.stopPropagation()}>
+        <div className="pt-6 pb-2 px-4 flex justify-between items-center bg-white sticky top-0 z-20 border-b border-black/5">
+          <button onClick={onClose} className="p-2 -ml-2 rounded-full hover:bg-black/5 active:scale-95 transition-transform">
+            <ChevronRight size={24} className="rotate-180" />
+          </button>
+          <div className="flex items-center gap-2">
+            {totalTasks > 0 && <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">{doneCount}/{totalTasks} done</span>}
+            <button onClick={handleSaveAll} className="px-4 py-1.5 rounded-full bg-black text-white text-sm font-bold active:scale-95 transition-transform">Done</button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pt-5 pb-[180px] flex flex-col">
+          <input
+            type="text" value={title} onChange={e => setTitle(e.target.value)}
+            placeholder="Checklist Title"
+            className="w-full outline-none text-2xl font-bold text-black mb-5 bg-transparent border-b-2 border-black/10 pb-2 focus:border-black/30 transition-colors"
+            style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}
+          />
+
+          {/* Items */}
+          <div className="flex flex-col gap-0.5 mb-5">
+            {items.length === 0 && <p className="text-black/30 text-sm italic text-center py-6">Add items below to get started</p>}
+            {items.map((item, idx) => (
+              <div key={item.id} className={`flex items-center gap-2 group py-1.5 rounded-xl pr-1 hover:bg-black/[0.02] transition-colors ${item.type === 'subtask' ? 'pl-7' : item.type === 'heading' ? 'pl-1 mt-3 mb-0.5' : 'pl-1'}`}>
+                {item.type === 'heading' ? (
+                  <div className="flex-1 flex items-center gap-2">
+                    <div className="w-1 h-5 bg-black/20 rounded-full shrink-0" />
+                    <span className="font-bold text-black/80 text-[15px] flex-1" style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{item.text}</span>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={() => toggleItem(item.id)} className={`shrink-0 w-5 h-5 rounded ${item.type === 'subtask' ? 'rounded-full' : 'rounded-[5px]'} border-2 flex items-center justify-center transition-all ${item.checked ? 'bg-emerald-500 border-emerald-500' : 'border-black/25 hover:border-emerald-400'}`}>
+                      {item.checked && <Check size={12} className="text-white" />}
+                    </button>
+                    <span className={`flex-1 text-[15px] transition-colors ${item.checked ? 'line-through text-black/30' : 'text-black/85'}`} style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}>{item.text}</span>
+                  </>
+                )}
+                <button onClick={() => deleteItem(item.id)} className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 transition-all shrink-0 active:scale-90">
+                  <X size={14}/>
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Add Item Input */}
+          <div className="border border-black/10 rounded-2xl p-3 bg-black/[0.015] sticky bottom-4">
+            <div className="flex gap-1 mb-2">
+              {[{v:'heading', l:'# Heading'}, {v:'task', l:'☐ Task'}, {v:'subtask', l:'↳ Sub-task'}].map(t => (
+                <button key={t.v} onClick={() => setAddType(t.v)} className={`text-xs px-2.5 py-1 rounded-full font-bold transition-colors ${addType === t.v ? 'bg-black text-white' : 'bg-black/5 text-black/50 hover:bg-black/10'}`}>
+                  {t.l}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-2 items-center">
+              <input
+                ref={inputRef}
+                value={newText} onChange={e => setNewText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addItem()}
+                placeholder={addType === 'heading' ? 'Section heading...' : addType === 'subtask' ? 'Sub-task detail...' : 'Task description...'}
+                className="flex-1 bg-transparent outline-none text-sm text-black placeholder:text-black/30"
+                style={{ fontFamily: "'Noto Sans Malayalam', sans-serif" }}
+              />
+              <button onClick={addItem} className="bg-black text-white w-7 h-7 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-transform">
+                <Plus size={16}/>
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     );
   };
