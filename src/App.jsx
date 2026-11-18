@@ -362,9 +362,9 @@ const AppleCalendarModal = ({ isOpen, onClose, initialDate, allData, onDateSelec
                       </div>
                       
                       <AnimatePresence>
-                        {activeEntryMenu === e.id && (loginRole === 'main' || loginRole === 'sub') && (
+                        {activeEntryMenu === e.id && (loginRole === 'main' || loginRole === 'sub' || loginRole === 'note') && (
                           <motion.div initial={{ opacity: 0, y: -5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute top-[28px] left-0 bg-white/95 backdrop-blur-md shadow-lg rounded-xl flex items-center gap-1 p-1 z-[80] border border-black/5" onPointerDown={(evt) => evt.stopPropagation()}>
-                            {loginRole === 'main' && (
+                            {(loginRole === 'main' || loginRole === 'note') && (
                               <>
                                 <button onClick={(evt) => { evt.stopPropagation(); saveToFirebase(e.id, { ...e, completed: !e.completed }); setActiveEntryMenu(null); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
                                   <CheckCircle size={22} className={e.completed ? 'fill-green-500 text-white' : ''} />
@@ -896,7 +896,7 @@ export default function App() {
   };
 
   const handlePointerDown = (e, id) => {
-    if (loginRole === 'sub2' || loginRole === 'note') return; 
+    if (loginRole === 'sub2') return; 
     if (e.target.closest('button') || e.target.closest('a') || e.target.closest('input') || e.target.closest('select')) return;
     if (activeEntryMenu === id) return;
     holdTimer.current = setTimeout(() => {
@@ -1030,7 +1030,7 @@ export default function App() {
             {entry.type === 'reminder' && entry.frequency !== 'none' && (
               <span className="text-xs bg-black/5 rounded px-2 py-0.5 ml-2 font-sans tracking-wide text-black/40">⟳ {entry.frequency.toUpperCase()}</span>
             )}
-            {entry.isPrivate && loginRole === 'main' && (
+            {entry.isPrivate && (loginRole === 'main' || loginRole === 'note') && (
               <span className="inline-flex items-center ml-2 text-red-500 relative z-[60]" title="Private Entry">
                 <Lock size={14} />
               </span>
@@ -1056,9 +1056,9 @@ export default function App() {
         </div>
 
         <AnimatePresence>
-          {activeEntryMenu === entry.id && (loginRole === 'main' || loginRole === 'sub') && (
+          {activeEntryMenu === entry.id && (loginRole === 'main' || loginRole === 'sub' || loginRole === 'note') && (
             <motion.div initial={{ opacity: 0, y: -5, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="absolute top-[28px] left-0 bg-white/95 backdrop-blur-md shadow-lg rounded-xl flex items-center gap-1 p-1 z-[80] border border-black/5" onPointerDown={(e) => e.stopPropagation()}>
-              {loginRole === 'main' && (
+              {(loginRole === 'main' || loginRole === 'note') && (
                 <>
                   <button onClick={(e) => { e.stopPropagation(); saveToFirebase(entry.id, { ...entry, completed: !entry.completed }); setActiveEntryMenu(null); }} className="p-2.5 rounded-lg hover:bg-black/5 text-[#1A1A1A] transition-colors active:scale-90">
                     <CheckCircle size={22} className={entry.completed ? 'fill-green-500 text-white' : ''} />
@@ -1164,7 +1164,7 @@ export default function App() {
         
         <div className="w-full z-[60] flex items-center justify-between pt-5 pb-3 border-b border-[rgba(178,138,90,0.3)] bg-transparent backdrop-blur-sm shrink-0 px-4 sm:px-8 relative" onPointerDown={(e) => e.stopPropagation()}>
           <div className="w-auto flex items-center justify-start gap-1 z-50 min-w-[50px]">
-            {loginRole === 'main' && (
+            {(loginRole === 'main' || loginRole === 'note') && (
               <>
                 <button 
                   onPointerDown={() => { window.modeSwitchTimer = setTimeout(() => { const nm = viewMode === 'diary' ? 'calendar' : 'diary'; setViewMode(nm); localStorage.setItem('diary_view_mode', nm); }, 1500); }} 
@@ -1185,7 +1185,7 @@ export default function App() {
               </>
             )}
             
-            {(loginRole === 'sub' || loginRole === 'sub2' || loginRole === 'note') && (
+            {(loginRole === 'sub' || loginRole === 'sub2') && (
               <>
                 <button onClick={(e) => { e.stopPropagation(); setShowLogoutConfirm(true); }} className="w-10 h-10 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full transition-colors active:scale-90 relative" title="Sign Out">
                    <LogOut size={20} />
@@ -1217,7 +1217,7 @@ export default function App() {
           </label>
 
           <div className="flex items-center gap-1 z-[70] w-auto min-w-[50px] justify-end">
-            {loginRole === 'main' && (
+            {(loginRole === 'main' || loginRole === 'note') && (
               <button 
                 onPointerDown={(e) => {
                   e.stopPropagation();
@@ -1249,7 +1249,7 @@ export default function App() {
   };
 
   const renderFooter = (isWhiteMode = false) => {
-    if (loginRole !== 'main') return null;
+    if (loginRole !== 'main' && loginRole !== 'note') return null;
     return (
       <div className={`absolute bottom-0 left-0 right-0 h-[64px] border-t z-[60] flex items-center justify-between px-2 sm:px-6 rounded-b-[2rem] sm:rounded-b-3xl ${isWhiteMode ? 'bg-white border-gray-100 shadow-[0_-4px_15px_rgba(0,0,0,0.05)] text-black' : 'bg-[#DCD2BE] border-[#B28A5A]/50 shadow-[inset_0_4px_10px_rgba(0,0,0,0.03),_0_-4px_15px_rgba(0,0,0,0.05)] text-[#3A2E25]/80'}`}>
         {!isWhiteMode && <PaperTexture />}
@@ -2378,7 +2378,7 @@ export default function App() {
             <div className="flex items-center gap-1 sm:gap-2 relative z-20 min-w-[80px] justify-end">
               <div className="flex items-center bg-black/5 rounded-full p-1">
                 <button onPointerDown={(e) => { e.preventDefault(); setEntryType('diary'); }} className={`p-1.5 rounded-full transition-all ${entryType === 'diary' ? 'bg-white shadow-sm text-[#B28A5A]' : 'text-black/40 hover:text-black/70'}`}><Book size={16} /></button>
-                {loginRole === 'main' && (
+                {(loginRole === 'main' || loginRole === 'note') && (
                   <button onPointerDown={(e) => { e.preventDefault(); setEntryType('reminder'); }} className={`p-1.5 rounded-full transition-all ${entryType === 'reminder' ? 'bg-white shadow-sm text-[#B28A5A]' : 'text-black/40 hover:text-black/70'}`}><Bell size={16} /></button>
                 )}
               </div>
@@ -2460,7 +2460,7 @@ export default function App() {
           
           <div className="p-4 sm:p-5 bg-[#EAE3D2]/80 backdrop-blur-md relative z-10 flex justify-between items-center border-t border-[#B28A5A]/20">
             <div className="flex items-center gap-2">
-              {loginRole === 'main' && entryType === 'diary' && (
+              {(loginRole === 'main' || loginRole === 'note') && entryType === 'diary' && (
                 <button onClick={() => setEntryPrivate(!entryPrivate)} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-bold transition-colors shadow-sm ${entryPrivate ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-white/50 text-black/60 hover:bg-white border border-black/5'}`}>
                   {entryPrivate ? <Lock size={16} /> : <User size={16} />}
                   <span className="hidden sm:inline">{entryPrivate ? 'Private' : 'Visible to PS'}</span>
@@ -2522,12 +2522,7 @@ export default function App() {
               </div>
 
               {viewMode === 'diary' && renderFooter()}
-              {viewMode === 'diary' && loginRole === 'note' && (
-                <div className="absolute bottom-0 left-0 right-0 h-[64px] bg-[#F7F3EA] border-t border-[#B28A5A]/20 flex items-center justify-around px-6 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-                  <button onClick={() => setActivePanel(p => p === 'todo' ? null : 'todo')} className={`p-3 transition-colors ${activePanel === 'todo' ? 'text-[#B28A5A]' : 'text-black/40 hover:text-[#3A2E25]'}`} title="To-Do List"><ListTodo size={22} /></button>
-                  <button onClick={() => { if (activePanel !== 'note') { window.history.pushState(null, '', '#notes'); setActivePanel('note'); } else { window.history.back(); } }} className={`p-3 transition-colors ${activePanel === 'note' ? 'text-[#B28A5A]' : 'text-black/40 hover:text-[#3A2E25]'}`} title="Notes"><StickyNote size={22} /></button>
-                </div>
-              )}
+
               <AnimatePresence>
                 {activePanel === 'reading' && <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="absolute inset-0 z-[54]"><div className="absolute inset-0 bg-black/40" onClick={()=>setActivePanel(null)}/><ReadingPanel /></motion.div>}
                 {activePanel === 'todo' && <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="absolute inset-0 z-[54]"><div className="absolute inset-0 bg-black/40" onClick={()=>setActivePanel(null)}/><TodoPanel /></motion.div>}
@@ -2710,7 +2705,7 @@ export default function App() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {viewMode === 'calendar' && loginRole === 'main' && (
+        {viewMode === 'calendar' && (loginRole === 'main' || loginRole === 'note') && (
           <AppleCalendarModal 
             isOpen={true} 
             onClose={() => {}} 
